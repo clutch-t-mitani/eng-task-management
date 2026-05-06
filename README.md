@@ -54,7 +54,7 @@ Laravel Sail で動かす場合:
 
 ```bash
 ./vendor/bin/sail up -d
-./vendor/bin/sail artisan migrate
+./vendor/bin/sail artisan migrate --seed
 ```
 
 ## 起動方法
@@ -86,13 +86,13 @@ Laravel 側は通常 `http://127.0.0.1:8000`、Vite 側は `http://localhost:517
 
 | コマンド | 用途 |
 | --- | --- |
-| `npm run dev` | Vite 開発サーバーを起動 |
-| `npm run build` | フロントエンドをビルド |
-| `php artisan test` | PHPUnit テストを実行 |
-| `vendor/bin/pint` | PHP コードフォーマット |
-| `composer dev` | Laravel サーバー、Queue、ログ、Vite をまとめて起動 |
+| `./vendor/bin/sail npm run dev` | Vite 開発サーバーを起動 |
+| `./vendor/bin/sail npm run build` | フロントエンドをビルド |
+| `./vendor/bin/sail artisan test` | PHPUnit テストを実行 |
+| `./vendor/bin/sail pint` | PHP コードフォーマット |
+| `./vendor/bin/sail composer dev` | Laravel サーバー、Queue、ログ、Vite をまとめて起動 |
 
-Sail 利用時は、必要に応じて `./vendor/bin/sail` を先頭につけて実行してください。
+このリポジトリの標準開発環境は Laravel Sail / Docker です。`.env` をローカル PHP / MySQL 向けに変更していない限り、検証やDB操作は `./vendor/bin/sail` 経由で実行してください。
 
 ## 画面構成
 

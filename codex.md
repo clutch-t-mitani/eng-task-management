@@ -96,19 +96,13 @@
 - GitHub Webhook は署名不正、対象外イベント、PR 除外、新規作成、既存更新、管理項目保持をテストする。
 - 並び替えは、順序保存、別プロダクト混入時の 422、存在しない ID の扱いを確認する。
 - 認証 API はログイン、ログアウト、me、未認証アクセスを確認する。
-- Frontend は最低限 `npm run build` で構文・依存関係・Vite build の破綻を確認する。
+- Frontend は最低限 `./vendor/bin/sail npm run build` で構文・依存関係・Vite build の破綻を確認する。
 
 ## 実装後の検証コマンド
 
+このリポジトリの標準開発環境は Laravel Sail / Docker です。`.env` の `DB_HOST=mysql` は Sail コンテナ内の MySQL を前提にしているため、DB 接続を伴う Artisan コマンドやアプリ実行系コマンドは原則として `./vendor/bin/sail` 経由で実行します。
+
 変更内容に応じて、可能な範囲で以下を実行します。
-
-```bash
-vendor/bin/pint
-php artisan test
-npm run build
-```
-
-Sail 環境で実行する場合:
 
 ```bash
 ./vendor/bin/sail pint
@@ -116,17 +110,26 @@ Sail 環境で実行する場合:
 ./vendor/bin/sail npm run build
 ```
 
+DB 操作や Seeder 実行が必要な場合:
+
+```bash
+./vendor/bin/sail artisan migrate
+./vendor/bin/sail artisan db:seed --class=DirectorSeeder
+```
+
 動作確認が必要な場合:
 
 ```bash
-composer dev
+./vendor/bin/sail up -d
+./vendor/bin/sail npm run dev
 ```
 
-または:
+Sail を使わないローカル PHP / MySQL 構成に `.env` を変更済みの場合のみ、ホスト側の `php artisan`、`vendor/bin/pint`、`npm run ...` を使ってよいです。その場合も、現在の `.env` がどちらの実行環境を向いているかを先に確認します。
+
+Laravel の統合開発コマンドを使う場合:
 
 ```bash
-php artisan serve
-npm run dev
+./vendor/bin/sail composer dev
 ```
 
 ## レビュー観点
@@ -139,7 +142,7 @@ npm run dev
 - 楽観的 UI 更新の失敗時にユーザーが復旧できるか。
 - ソフトデリート済み関連データの表示で落ちないか。
 - 空状態、ローディング、エラー、権限なし、未設定状態が UI で破綻しないか。
-- `npm run build`、`php artisan test`、`vendor/bin/pint` の対象になる破綻を残していないか。
+- `./vendor/bin/sail npm run build`、`./vendor/bin/sail artisan test`、`./vendor/bin/sail pint` の対象になる破綻を残していないか。
 
 ## Codex への作業メモ
 
