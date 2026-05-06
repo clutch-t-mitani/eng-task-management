@@ -30,7 +30,7 @@
 
 ### 検証コマンド
 
-codex.md の「実装後の検証コマンド」を踏襲：`vendor/bin/pint` / `php artisan test` / `npm run build`。Sail 環境では `./vendor/bin/sail` を前置。
+codex.md の「実装後の検証コマンド」を踏襲：標準は `./vendor/bin/sail pint` / `./vendor/bin/sail artisan test` / `./vendor/bin/sail npm run build`。Sail を使わないローカル構成に `.env` を変更済みの場合だけ、ホスト側コマンドを使ってよい。
 
 ## codex.md との同期ルール
 

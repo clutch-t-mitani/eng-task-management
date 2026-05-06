@@ -8,6 +8,7 @@ import UserFormView from '../views/UserFormView.vue';
 import EngineerListView from '../views/EngineerListView.vue';
 import ProductListView from '../views/ProductListView.vue';
 import ProductRepositoryView from '../views/ProductRepositoryView.vue';
+import { useAuthStore } from '../stores/auth';
 
 const routes = [
     { path: '/login', component: LoginView, meta: { guest: true, title: 'ログイン' } },
@@ -29,8 +30,29 @@ const router = createRouter({
     routes,
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
     document.title = `${to.meta.title ?? 'ISSUE管理'} | ISSUE管理`;
+
+    const authStore = useAuthStore();
+
+    if (to.meta.requiresAuth) {
+        await authStore.fetchMe();
+
+        if (!authStore.isAuthenticated) {
+            return {
+                path: '/login',
+                query: { redirect: to.fullPath },
+            };
+        }
+    }
+
+    if (to.meta.guest) {
+        await authStore.fetchMe();
+
+        if (authStore.isAuthenticated) {
+            return to.query.redirect?.toString() || '/table';
+        }
+    }
 });
 
 export default router;

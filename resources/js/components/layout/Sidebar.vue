@@ -22,8 +22,27 @@
         <router-link to="/products" class="nav-link">
             <span class="nav-icon">品</span> プロダクト管理
         </router-link>
+        <div class="sidebar-footer">
+            <p v-if="authStore.user" class="user-name">{{ authStore.user.name }}</p>
+            <button class="logout-button" type="button" @click="logout">
+                ログアウト
+            </button>
+        </div>
     </nav>
 </template>
+
+<script setup>
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '../../stores/auth';
+
+const router = useRouter();
+const authStore = useAuthStore();
+
+async function logout() {
+    await authStore.logout();
+    await router.push('/login');
+}
+</script>
 
 <style scoped>
 .sidebar {
@@ -90,5 +109,37 @@
     font-size: 12px;
     font-weight: 700;
     text-align: center;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding: 16px;
+    border-top: 1px solid #2d3748;
+}
+
+.user-name {
+    margin: 0 0 10px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.logout-button {
+    width: 100%;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    padding: 8px 10px;
+    background: transparent;
+    color: #cbd5e0;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.logout-button:hover {
+    background: #2d3748;
+    color: #fff;
 }
 </style>
