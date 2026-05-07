@@ -22,7 +22,7 @@
 | GET | `/api/v1/users` | 一覧（ソフトデリート済み除く） |
 | POST | `/api/v1/users` | 作成（name, email, password） |
 | GET | `/api/v1/users/{id}` | 詳細 |
-| PUT | `/api/v1/users/{id}` | 更新（name・パスワード変更） |
+| PUT | `/api/v1/users/{id}` | 更新（name・email・パスワード変更） |
 | DELETE | `/api/v1/users/{id}` | ソフトデリート |
 
 ### エンジニア管理
