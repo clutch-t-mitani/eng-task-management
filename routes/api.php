@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EngineerController;
+use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -28,5 +29,13 @@ Route::prefix('v1')->group(function () {
         Route::patch('/products/reorder', [ProductController::class, 'reorder'])->name('products.reorder');
         Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+
+        Route::get('/issues', [IssueController::class, 'index'])->name('issues.index');
+        Route::get('/issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
+        Route::put('/issues/{issue}', [IssueController::class, 'update'])->name('issues.update');
+        Route::patch('/issues/{issue}/status', [IssueController::class, 'updateStatus'])->name('issues.status');
+        Route::patch('/issues/{issue}/managed', [IssueController::class, 'toggleManaged'])->name('issues.managed');
+        Route::delete('/issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
+        Route::put('/issues/{issue}/schedule', [IssueController::class, 'updateSchedule'])->name('issues.schedule');
     });
 });

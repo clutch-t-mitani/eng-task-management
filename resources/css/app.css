@@ -261,6 +261,201 @@ body {
     line-height: 1.6;
 }
 
+.issue-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(150px, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    padding: 14px;
+}
+
+.issue-filter-bar label {
+    display: grid;
+    gap: 6px;
+    color: #2d3748;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.issue-filter-bar select,
+.issue-table select,
+.issue-table input {
+    width: 100%;
+    min-height: 36px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    background: #fff;
+    padding: 7px 9px;
+    color: #1a202c;
+    font: inherit;
+    font-weight: 400;
+}
+
+.issue-filter-bar select[multiple] {
+    height: 112px;
+    padding: 6px;
+}
+
+.issue-filter-bar select[multiple] option {
+    border-radius: 4px;
+    padding: 4px 6px;
+}
+
+.issue-filter-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.issue-table-wrap {
+    overflow-x: auto;
+}
+
+.issue-table {
+    width: 100%;
+    min-width: 1660px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+}
+
+.issue-table th,
+.issue-table td {
+    border-bottom: 1px solid #edf2f7;
+    padding: 10px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.issue-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fafc;
+    color: #4a5568;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.issue-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.issue-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.issue-table th:first-child,
+.issue-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    width: 320px;
+    min-width: 320px;
+    max-width: 320px;
+    background: inherit;
+}
+
+.issue-table th:first-child {
+    z-index: 3;
+    background: #f8fafc;
+}
+
+.issue-table td:first-child {
+    background: #fff;
+}
+
+.issue-table tbody tr:hover td:first-child {
+    background: #f8fafc;
+}
+
+.issue-table select {
+    min-width: 130px;
+}
+
+.issue-table input[type="date"] {
+    min-width: 132px;
+}
+
+.issue-table input[type="number"] {
+    min-width: 88px;
+}
+
+.issue-table .btn {
+    min-width: 76px;
+    white-space: nowrap;
+}
+
+.issue-title-cell a {
+    color: #1a202c;
+    font-size: 15px;
+    font-weight: 800;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.issue-title-cell a:hover {
+    color: #2b6cb0;
+    text-decoration: underline;
+}
+
+.github-state,
+.flag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.github-state-open {
+    background: #f0fff4;
+    color: #276749;
+}
+
+.github-state-closed {
+    background: #faf5ff;
+    color: #6b46c1;
+}
+
+.issue-flags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    min-height: 36px;
+}
+
+.issue-muted {
+    color: #a0aec0;
+}
+
+.flag-danger {
+    background: #fff5f5;
+    color: #c53030;
+}
+
+.flag-warning {
+    background: #fffff0;
+    color: #975a16;
+}
+
+@media (max-width: 1100px) {
+    .issue-filter-bar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .issue-filter-actions {
+        grid-column: 1 / -1;
+    }
+}
+
 @media (max-width: 720px) {
     .master-view {
         padding: 20px;
@@ -275,5 +470,20 @@ body {
     .row-actions,
     .form-actions {
         justify-content: flex-start;
+    }
+
+    .issue-filter-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .issue-table {
+        min-width: 1500px;
+    }
+
+    .issue-table th:first-child,
+    .issue-table td:first-child {
+        width: 260px;
+        min-width: 260px;
+        max-width: 260px;
     }
 }
