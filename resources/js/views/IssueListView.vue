@@ -10,7 +10,14 @@
             </button>
         </header>
 
-        <p v-if="successMessage" class="alert alert-success">{{ successMessage }}</p>
+        <div
+            v-if="successMessage"
+            class="issue-toast issue-toast-success"
+            role="status"
+            aria-live="polite"
+        >
+            {{ successMessage }}
+        </div>
         <p v-if="errorMessage" class="alert alert-error">{{ errorMessage }}</p>
 
         <form class="issue-filter-bar" @submit.prevent="fetchIssues">
