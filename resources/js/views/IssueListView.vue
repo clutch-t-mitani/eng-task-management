@@ -469,6 +469,7 @@ async function updateStatus(issue, status) {
 async function toggleManaged(issue) {
     try {
         await issueStore.toggleManaged(issue.id);
+        await fetchIssues();
         showSuccessMessage('管理表を更新しました。');
     } catch (error) {
         errorMessage.value = formatError(error, '管理表の更新に失敗しました。');
