@@ -192,7 +192,6 @@ import { useProductStore } from '../stores/products';
 import { useUserStore } from '../stores/users';
 
 const statuses = ['未着手', '作業中', 'テスト中', '完了', '保留'];
-const defaultVisibleStatuses = statuses.filter((status) => status !== '完了');
 const filterStorageKey = 'issue-list-filters';
 const issueStore = useIssueStore();
 const productStore = useProductStore();
@@ -206,7 +205,7 @@ const filters = reactive({
     product_id: [],
     engineer_id: [],
     director_id: [],
-    status: [...defaultVisibleStatuses],
+    status: [],
     mode: 'all',
 });
 const sortState = reactive({
@@ -323,7 +322,7 @@ function defaultFilters() {
         product_id: [],
         engineer_id: [],
         director_id: [],
-        status: [...defaultVisibleStatuses],
+        status: [],
         mode: 'all',
     };
 }
