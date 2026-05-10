@@ -61,42 +61,43 @@
         <div class="master-panel issue-panel">
             <p v-if="issueStore.loading" class="empty-state">読み込み中です。</p>
             <p v-else-if="issueStore.issues.length === 0" class="empty-state">
-                ISSUEは未登録です。開発データが必要な場合は `php artisan migrate:fresh --seed` を実行してください。
+                {{ emptyStateMessage }}
             </p>
             <div v-else class="issue-table-wrap">
                 <table class="issue-table">
                     <thead>
                         <tr>
-                            <th>Issue</th>
-                            <th>プロダクト</th>
-                            <th>GitHub状態</th>
-                            <th>ディレクター</th>
-                            <th>エンジニア</th>
-                            <th>ステータス</th>
-                            <th>管理対象</th>
-                            <th>予定開始</th>
-                            <th>実績開始</th>
-                            <th>予定終了</th>
-                            <th>実績終了</th>
-                            <th>予定工数</th>
-                            <th>実績工数</th>
-                            <th>フラグ</th>
-                            <th>同期日時</th>
+                            <th
+                                v-for="column in sortableColumns"
+                                :key="column.key"
+                                :aria-sort="sortState.key === column.key ? sortAriaValue : 'none'"
+                            >
+                                <button
+                                    class="issue-sort-button"
+                                    type="button"
+                                    :aria-label="`${column.label}で並び替え`"
+                                    @click="toggleSort(column.key)"
+                                >
+                                    <span>{{ column.label }}</span>
+                                    <span class="issue-sort-icon" aria-hidden="true">{{ sortIcon(column.key) }}</span>
+                                </button>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="issue in issueStore.issues" :key="issue.id">
+                        <tr v-for="issue in sortedIssues" :key="issue.id">
                             <td class="issue-title-cell">
                                 <a :href="issue.github_url" target="_blank" rel="noreferrer">
                                     #{{ issue.github_issue_number }} {{ issue.title }}
                                 </a>
+                                <div class="issue-title-meta">
+                                    <span :class="['github-state', `github-state-${issue.github_state}`]">
+                                        {{ issue.github_state }}
+                                    </span>
+                                    <span>同期: {{ formatDateTime(issue.github_synced_at) }}</span>
+                                </div>
                             </td>
                             <td>{{ productName(issue.product_id) }}</td>
-                            <td>
-                                <span :class="['github-state', `github-state-${issue.github_state}`]">
-                                    {{ issue.github_state }}
-                                </span>
-                            </td>
                             <td>
                                 <select
                                     :value="issue.director?.id ?? ''"
@@ -186,7 +187,6 @@
                                     <span v-if="!issue.is_overdue && !issue.is_due_soon" class="issue-muted">-</span>
                                 </div>
                             </td>
-                            <td>{{ formatDateTime(issue.github_synced_at) }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -196,7 +196,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useEngineerStore } from '../stores/engineers';
 import { useIssueStore } from '../stores/issues';
 import { useProductStore } from '../stores/products';
@@ -220,6 +220,64 @@ const filters = reactive({
     status: [...defaultVisibleStatuses],
     mode: '',
 });
+const sortState = reactive({
+    key: 'default',
+    direction: 'asc',
+});
+const sortableColumns = [
+    { key: 'issue', label: 'Issue' },
+    { key: 'product', label: 'プロダクト' },
+    { key: 'director', label: 'ディレクター' },
+    { key: 'engineer', label: 'エンジニア' },
+    { key: 'status', label: 'ステータス' },
+    { key: 'is_managed', label: '管理対象' },
+    { key: 'planned_start', label: '予定開始' },
+    { key: 'actual_start', label: '実績開始' },
+    { key: 'planned_end', label: '予定終了' },
+    { key: 'actual_end', label: '実績終了' },
+    { key: 'planned_hours', label: '予定工数' },
+    { key: 'actual_hours', label: '実績工数' },
+    { key: 'flags', label: 'フラグ' },
+];
+const collator = new Intl.Collator('ja-JP', { numeric: true, sensitivity: 'base' });
+
+const sortedIssues = computed(() => {
+    const direction = sortState.direction === 'desc' ? -1 : 1;
+
+    return [...issueStore.issues].sort((a, b) => {
+        if (sortState.key === 'default') {
+            return defaultIssueCompare(a, b);
+        }
+
+        const leftValue = sortValue(a, sortState.key);
+        const rightValue = sortValue(b, sortState.key);
+        const leftEmpty = isSortEmpty(leftValue);
+        const rightEmpty = isSortEmpty(rightValue);
+
+        if (leftEmpty || rightEmpty) {
+            if (leftEmpty && rightEmpty) {
+                return defaultIssueCompare(a, b);
+            }
+
+            return leftEmpty ? 1 : -1;
+        }
+
+        const compared = compareValues(leftValue, rightValue);
+
+        if (compared !== 0) {
+            return compared * direction;
+        }
+
+        return defaultIssueCompare(a, b);
+    });
+});
+const hasActiveFilters = computed(() => Object.keys(filterParams()).length > 0);
+const emptyStateMessage = computed(() => (
+    hasActiveFilters.value
+        ? '条件に一致するISSUEはありません。絞り込み条件を変更してください。'
+        : 'ISSUEは未登録です。GitHub連携または同期設定を確認してください。'
+));
+const sortAriaValue = computed(() => (sortState.direction === 'asc' ? 'ascending' : 'descending'));
 
 onMounted(async () => {
     restoreFilters();
@@ -327,6 +385,78 @@ function normalizeFilterArray(value) {
     }
 
     return value.map((item) => String(item)).filter((item) => item !== '');
+}
+
+function toggleSort(key) {
+    if (sortState.key === key) {
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+        return;
+    }
+
+    sortState.key = key;
+    sortState.direction = 'asc';
+}
+
+function sortIcon(key) {
+    if (sortState.key !== key) {
+        return '↕';
+    }
+
+    return sortState.direction === 'asc' ? '↑' : '↓';
+}
+
+function sortValue(issue, key) {
+    switch (key) {
+        case 'issue':
+            return `${issue.github_issue_number ?? ''} ${issue.title ?? ''}`;
+        case 'product':
+            return productName(issue.product_id);
+        case 'director':
+            return issue.director?.name ?? '';
+        case 'engineer':
+            return issue.engineer?.name ?? '';
+        case 'status':
+            return statuses.indexOf(issue.status);
+        case 'is_managed':
+            return issue.is_managed ? 1 : 0;
+        case 'planned_start':
+        case 'actual_start':
+        case 'planned_end':
+        case 'actual_end':
+        case 'planned_hours':
+        case 'actual_hours':
+            return issue.schedule?.[key] ?? null;
+        case 'flags':
+            if (issue.is_overdue) {
+                return 2;
+            }
+
+            if (issue.is_due_soon) {
+                return 1;
+            }
+
+            return 0;
+        default:
+            return null;
+    }
+}
+
+function compareValues(left, right) {
+    if (typeof left === 'number' && typeof right === 'number') {
+        return left - right;
+    }
+
+    return collator.compare(String(left), String(right));
+}
+
+function isSortEmpty(value) {
+    return value === null || value === undefined || value === '';
+}
+
+function defaultIssueCompare(left, right) {
+    return compareValues(left.product_id, right.product_id)
+        || compareValues(left.display_order, right.display_order)
+        || compareValues(left.id, right.id);
 }
 
 async function updateIssue(issue, payload) {

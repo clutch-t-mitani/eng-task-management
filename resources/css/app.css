@@ -263,14 +263,14 @@ body {
 
 .issue-filter-bar {
     display: grid;
-    grid-template-columns: repeat(5, minmax(150px, 1fr)) auto;
-    gap: 12px;
+    grid-template-columns: repeat(5, minmax(128px, 1fr)) auto;
+    gap: 10px;
     align-items: end;
     margin-bottom: 20px;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     background: #fff;
-    padding: 14px;
+    padding: 12px;
 }
 
 .issue-filter-bar label {
@@ -296,7 +296,7 @@ body {
 }
 
 .issue-filter-bar select[multiple] {
-    height: 112px;
+    height: 88px;
     padding: 6px;
 }
 
@@ -316,16 +316,16 @@ body {
 
 .issue-table {
     width: 100%;
-    min-width: 1660px;
+    min-width: 1180px;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .issue-table th,
 .issue-table td {
     border-bottom: 1px solid #edf2f7;
-    padding: 10px;
+    padding: 8px;
     text-align: left;
     vertical-align: middle;
 }
@@ -339,6 +339,41 @@ body {
     font-size: 12px;
     font-weight: 800;
     white-space: nowrap;
+}
+
+.issue-sort-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+    min-height: 28px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    padding: 4px 6px;
+    color: inherit;
+    font: inherit;
+    font-weight: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.issue-sort-button:hover,
+.issue-sort-button:focus-visible {
+    background: #edf2f7;
+}
+
+.issue-sort-button:focus-visible {
+    outline: 2px solid #63b3ed;
+    outline-offset: 1px;
+}
+
+.issue-sort-icon {
+    min-width: 12px;
+    color: #718096;
+    font-size: 11px;
+    text-align: center;
 }
 
 .issue-table tbody tr:last-child td {
@@ -355,8 +390,8 @@ body {
     left: 0;
     z-index: 2;
     width: 320px;
-    min-width: 320px;
-    max-width: 320px;
+    min-width: 260px;
+    max-width: 260px;
     background: inherit;
 }
 
@@ -374,25 +409,27 @@ body {
 }
 
 .issue-table select {
-    min-width: 130px;
+    min-width: 108px;
 }
 
 .issue-table input[type="date"] {
-    min-width: 132px;
+    min-width: 116px;
 }
 
 .issue-table input[type="number"] {
-    min-width: 88px;
+    min-width: 72px;
 }
 
 .issue-table .btn {
-    min-width: 76px;
+    min-width: 64px;
+    min-height: 32px;
+    padding: 6px 9px;
     white-space: nowrap;
 }
 
 .issue-title-cell a {
     color: #1a202c;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 800;
     text-decoration: none;
     overflow-wrap: anywhere;
@@ -401,6 +438,16 @@ body {
 .issue-title-cell a:hover {
     color: #2b6cb0;
     text-decoration: underline;
+}
+
+.issue-title-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 5px;
+    color: #718096;
+    font-size: 11px;
+    white-space: nowrap;
 }
 
 .github-state,
@@ -477,13 +524,13 @@ body {
     }
 
     .issue-table {
-        min-width: 1500px;
+        min-width: 1120px;
     }
 
     .issue-table th:first-child,
     .issue-table td:first-child {
-        width: 260px;
-        min-width: 260px;
-        max-width: 260px;
+        width: 220px;
+        min-width: 220px;
+        max-width: 220px;
     }
 }
