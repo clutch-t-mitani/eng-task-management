@@ -64,11 +64,9 @@ class IssueResource extends JsonResource
     {
         return [
             'planned_start' => $schedule->planned_start?->toDateString(),
-            'actual_start' => $schedule->actual_start?->toDateString(),
             'planned_end' => $schedule->planned_end?->toDateString(),
+            'actual_start' => $schedule->actual_start?->toDateString(),
             'actual_end' => $schedule->actual_end?->toDateString(),
-            'planned_hours' => $schedule->planned_hours === null ? null : (float) $schedule->planned_hours,
-            'actual_hours' => $schedule->actual_hours === null ? null : (float) $schedule->actual_hours,
         ];
     }
 

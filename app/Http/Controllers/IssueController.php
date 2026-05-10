@@ -22,7 +22,7 @@ class IssueController extends Controller
             ->when(
                 $request->boolean('unmanaged_imports'),
                 fn ($query) => $query->unmanagedImports(),
-                fn ($query) => $query->where('is_managed', $request->has('is_managed') ? $request->boolean('is_managed') : true),
+                fn ($query) => $query->when($request->has('is_managed'), fn ($query) => $query->where('is_managed', $request->boolean('is_managed'))),
             )
             ->orderBy('product_id')
             ->orderBy('display_order')

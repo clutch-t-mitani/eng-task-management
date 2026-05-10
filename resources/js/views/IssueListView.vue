@@ -14,7 +14,7 @@
         <p v-if="errorMessage" class="alert alert-error">{{ errorMessage }}</p>
 
         <form class="issue-filter-bar" @submit.prevent="fetchIssues">
-            <label>
+            <label class="filter-product">
                 <span>プロダクト</span>
                 <select v-model="filters.product_id" multiple>
                     <option v-for="product in productStore.products" :key="product.id" :value="String(product.id)">
@@ -22,7 +22,7 @@
                     </option>
                 </select>
             </label>
-            <label>
+            <label class="filter-member">
                 <span>エンジニア</span>
                 <select v-model="filters.engineer_id" multiple>
                     <option v-for="engineer in engineerStore.engineers" :key="engineer.id" :value="String(engineer.id)">
@@ -30,7 +30,7 @@
                     </option>
                 </select>
             </label>
-            <label>
+            <label class="filter-member">
                 <span>ディレクター</span>
                 <select v-model="filters.director_id" multiple>
                     <option v-for="user in userStore.users" :key="user.id" :value="String(user.id)">
@@ -38,18 +38,18 @@
                     </option>
                 </select>
             </label>
-            <label>
+            <label class="filter-status">
                 <span>ステータス</span>
                 <select v-model="filters.status" multiple>
                     <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
                 </select>
             </label>
-            <label>
-                <span>管理対象</span>
+            <label class="filter-mode">
+                <span>管理表</span>
                 <select v-model="filters.mode">
-                    <option value="">管理対象のみ</option>
-                    <option value="unmanaged">未管理のみ</option>
-                    <option value="unmanaged_imports">未追加リスト</option>
+                    <option value="all">すべて</option>
+                    <option value="managed">表示中のみ</option>
+                    <option value="unmanaged_imports">未追加のみ</option>
                 </select>
             </label>
             <div class="issue-filter-actions">
@@ -65,6 +65,13 @@
             </p>
             <div v-else class="issue-table-wrap">
                 <table class="issue-table">
+                    <colgroup>
+                        <col
+                            v-for="column in sortableColumns"
+                            :key="column.key"
+                            :style="{ width: column.width }"
+                        >
+                    </colgroup>
                     <thead>
                         <tr>
                             <th
@@ -131,7 +138,7 @@
                                     type="button"
                                     @click="toggleManaged(issue)"
                                 >
-                                    {{ issue.is_managed ? '管理対象' : '追加' }}
+                                    {{ issue.is_managed ? '表示中' : '追加' }}
                                 </button>
                             </td>
                             <td>
@@ -143,13 +150,6 @@
                             </td>
                             <td>
                                 <input
-                                    :value="issue.schedule?.actual_start ?? ''"
-                                    type="date"
-                                    @change="updateSchedule(issue, { actual_start: emptyToNull($event.target.value) })"
-                                >
-                            </td>
-                            <td>
-                                <input
                                     :value="issue.schedule?.planned_end ?? ''"
                                     type="date"
                                     @change="updateSchedule(issue, { planned_end: emptyToNull($event.target.value) })"
@@ -157,27 +157,16 @@
                             </td>
                             <td>
                                 <input
+                                    :value="issue.schedule?.actual_start ?? ''"
+                                    type="date"
+                                    @change="updateSchedule(issue, { actual_start: emptyToNull($event.target.value) })"
+                                >
+                            </td>
+                            <td>
+                                <input
                                     :value="issue.schedule?.actual_end ?? ''"
                                     type="date"
                                     @change="updateSchedule(issue, { actual_end: emptyToNull($event.target.value) })"
-                                >
-                            </td>
-                            <td>
-                                <input
-                                    :value="issue.schedule?.planned_hours ?? ''"
-                                    min="0"
-                                    step="0.25"
-                                    type="number"
-                                    @change="updateSchedule(issue, { planned_hours: emptyToNull($event.target.value) })"
-                                >
-                            </td>
-                            <td>
-                                <input
-                                    :value="issue.schedule?.actual_hours ?? ''"
-                                    min="0"
-                                    step="0.25"
-                                    type="number"
-                                    @change="updateSchedule(issue, { actual_hours: emptyToNull($event.target.value) })"
                                 >
                             </td>
                             <td>
@@ -218,26 +207,24 @@ const filters = reactive({
     engineer_id: [],
     director_id: [],
     status: [...defaultVisibleStatuses],
-    mode: '',
+    mode: 'all',
 });
 const sortState = reactive({
     key: 'default',
     direction: 'asc',
 });
 const sortableColumns = [
-    { key: 'issue', label: 'Issue' },
-    { key: 'product', label: 'プロダクト' },
-    { key: 'director', label: 'ディレクター' },
-    { key: 'engineer', label: 'エンジニア' },
-    { key: 'status', label: 'ステータス' },
-    { key: 'is_managed', label: '管理対象' },
-    { key: 'planned_start', label: '予定開始' },
-    { key: 'actual_start', label: '実績開始' },
-    { key: 'planned_end', label: '予定終了' },
-    { key: 'actual_end', label: '実績終了' },
-    { key: 'planned_hours', label: '予定工数' },
-    { key: 'actual_hours', label: '実績工数' },
-    { key: 'flags', label: 'フラグ' },
+    { key: 'issue', label: 'Issue', width: '280px' },
+    { key: 'product', label: 'プロダクト', width: '92px' },
+    { key: 'director', label: 'ディレクター', width: '108px' },
+    { key: 'engineer', label: 'エンジニア', width: '108px' },
+    { key: 'status', label: 'ステータス', width: '92px' },
+    { key: 'is_managed', label: '管理表', width: '68px' },
+    { key: 'planned_start', label: '予定開始', width: '104px' },
+    { key: 'planned_end', label: '予定終了', width: '104px' },
+    { key: 'actual_start', label: '実績開始', width: '104px' },
+    { key: 'actual_end', label: '実績終了', width: '104px' },
+    { key: 'flags', label: 'フラグ', width: '80px' },
 ];
 const collator = new Intl.Collator('ja-JP', { numeric: true, sensitivity: 'base' });
 
@@ -318,10 +305,6 @@ function filterParams() {
         params.is_managed = true;
     }
 
-    if (filters.mode === 'unmanaged') {
-        params.is_managed = false;
-    }
-
     if (filters.mode === 'unmanaged_imports') {
         params.unmanaged_imports = true;
     }
@@ -341,7 +324,7 @@ function defaultFilters() {
         engineer_id: [],
         director_id: [],
         status: [...defaultVisibleStatuses],
-        mode: '',
+        mode: 'all',
     };
 }
 
@@ -372,10 +355,18 @@ function applyFilters(nextFilters) {
     filters.engineer_id = normalizeFilterArray(nextFilters.engineer_id);
     filters.director_id = normalizeFilterArray(nextFilters.director_id);
     filters.status = normalizeFilterArray(nextFilters.status).filter((status) => statuses.includes(status));
-    filters.mode = '';
+    filters.mode = 'all';
 
-    if (['', 'unmanaged', 'unmanaged_imports'].includes(nextFilters.mode)) {
-        filters.mode = nextFilters.mode;
+    if (nextFilters.mode === '' || nextFilters.mode === 'all') {
+        filters.mode = 'all';
+    }
+
+    if (nextFilters.mode === 'managed') {
+        filters.mode = 'managed';
+    }
+
+    if (nextFilters.mode === 'unmanaged' || nextFilters.mode === 'unmanaged_imports') {
+        filters.mode = 'unmanaged_imports';
     }
 }
 
@@ -423,8 +414,6 @@ function sortValue(issue, key) {
         case 'actual_start':
         case 'planned_end':
         case 'actual_end':
-        case 'planned_hours':
-        case 'actual_hours':
             return issue.schedule?.[key] ?? null;
         case 'flags':
             if (issue.is_overdue) {
@@ -481,20 +470,18 @@ async function updateStatus(issue, status) {
 async function toggleManaged(issue) {
     try {
         await issueStore.toggleManaged(issue.id);
-        showSuccessMessage('管理対象を更新しました。');
+        showSuccessMessage('管理表を更新しました。');
     } catch (error) {
-        errorMessage.value = formatError(error, '管理対象の更新に失敗しました。');
+        errorMessage.value = formatError(error, '管理表の更新に失敗しました。');
     }
 }
 
 async function updateSchedule(issue, patch) {
     const schedule = {
         planned_start: issue.schedule?.planned_start ?? null,
-        actual_start: issue.schedule?.actual_start ?? null,
         planned_end: issue.schedule?.planned_end ?? null,
+        actual_start: issue.schedule?.actual_start ?? null,
         actual_end: issue.schedule?.actual_end ?? null,
-        planned_hours: issue.schedule?.planned_hours ?? null,
-        actual_hours: issue.schedule?.actual_hours ?? null,
         ...patch,
     };
 

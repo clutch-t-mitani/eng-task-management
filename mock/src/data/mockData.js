@@ -93,18 +93,6 @@ export const issueSchedules = [
   { issue_id: 10, planned_start: '2026-05-10', actual_start: null, planned_end: '2026-05-25', actual_end: null },
 ]
 
-export const workLogs = [
-  { id: 1, issue_id: 1, member_id: 1, action: 'start', recorded_at: '2026-04-01T09:00:00' },
-  { id: 2, issue_id: 1, member_id: 1, action: 'stop', recorded_at: '2026-04-09T18:00:00' },
-  { id: 3, issue_id: 2, member_id: 2, action: 'start', recorded_at: '2026-04-06T10:00:00' },
-  { id: 4, issue_id: 2, member_id: 2, action: 'stop', recorded_at: '2026-04-16T17:30:00' },
-  { id: 5, issue_id: 3, member_id: 1, action: 'start', recorded_at: '2026-04-15T09:30:00' },
-  { id: 6, issue_id: 3, member_id: 1, action: 'pause', recorded_at: '2026-04-17T18:00:00' },
-  { id: 7, issue_id: 3, member_id: 1, action: 'resume', recorded_at: '2026-04-19T09:00:00' },
-  { id: 8, issue_id: 4, member_id: 3, action: 'start', recorded_at: '2026-04-12T09:00:00' },
-  { id: 9, issue_id: 9, member_id: 1, action: 'start', recorded_at: '2026-04-21T14:00:00' },
-]
-
 export const statuses = ['未着手', '作業中', 'テスト中', '完了', '保留']
 
 export function getMemberById(id) {
@@ -113,26 +101,6 @@ export function getMemberById(id) {
 
 export function getScheduleByIssueId(issueId) {
   return issueSchedules.find(s => s.issue_id === issueId)
-}
-
-export function calcWorkHours(issueId) {
-  const logs = workLogs.filter(l => l.issue_id === issueId).sort(
-    (a, b) => new Date(a.recorded_at) - new Date(b.recorded_at)
-  )
-  let total = 0
-  let startTime = null
-  for (const log of logs) {
-    if (log.action === 'start' || log.action === 'resume') {
-      startTime = new Date(log.recorded_at)
-    } else if ((log.action === 'stop' || log.action === 'pause') && startTime) {
-      total += (new Date(log.recorded_at) - startTime) / 3600000
-      startTime = null
-    }
-  }
-  if (startTime) {
-    total += (new Date() - startTime) / 3600000
-  }
-  return Math.round(total * 10) / 10
 }
 
 export function isOverdue(schedule) {

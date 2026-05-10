@@ -20,7 +20,6 @@
         <div class="h-col">予定終了</div>
         <div class="h-col">実績開始</div>
         <div class="h-col">実績終了</div>
-        <div class="h-col h-right">工数</div>
       </div>
 
       <!-- グループ一覧 (D&D) -->
@@ -197,14 +196,13 @@ function addGroup() {
 
 .table-header {
   display: grid;
-  grid-template-columns: 28px 1fr 100px 100px 110px 90px 90px 90px 90px 64px;
+  grid-template-columns: 28px 1fr 100px 100px 110px 90px 90px 90px 90px;
   position: sticky; top: 0; z-index: 10;
   background: #f7fafc; border-bottom: 2px solid #e2e8f0;
 }
 .table-header > div { padding: 9px 8px; font-size: 11px; color: #718096; font-weight: 700; white-space: nowrap; }
 .h-drag { width: 28px; }
 .h-title { padding-left: 8px; }
-.h-right { text-align: right; }
 
 .group-wrap { }
 :global(.group-drag-ghost) { opacity: 0.4; background: #bee3f8; }

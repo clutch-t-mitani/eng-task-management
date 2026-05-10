@@ -57,15 +57,13 @@
 ### 3. 管理表
 
 - **1行 = 1ISSUE** のExcel風テーブル形式
-- 列構成：ISSUE（タイトル＋GitHub URLリンク）| ディレクター | エンジニア | ステータス | 予定開始 | 予定終了 | 実績開始 | 実績終了 | 予定工数 | 実績工数
-- 日付4項目と工数2項目を手動入力で管理
+- 列構成：ISSUE（タイトル＋GitHub URLリンク）| ディレクター | エンジニア | ステータス | 予定開始 | 予定終了 | 実績開始 | 実績終了 | フラグ
+- 日付4項目を手動入力で管理
   - 予定開始日
   - 実際の開始日
   - 予定終了日
   - 終了日
-  - 予定工数
-  - 実績工数
-- 工数はISSUEの担当エンジニアに紐づく実績値として集計する
+- 管理表フィルターは「すべて」を初期表示とし、「表示中のみ」「未追加のみ」に切り替えられる
 - 履歴・振り返り（完了したISSUEも過去に遡って参照可能）
 
 ### 4. フィルター・並び替え
@@ -77,7 +75,7 @@
 
 ### 5. ダッシュボード
 
-- エンジニアごとの簡易ダッシュボード（担当ISSUE数・進捗・予定/実績工数）
+- エンジニアごとの簡易ダッシュボード（担当ISSUE数・進捗）
 - 期日超過・期日間近をアプリ内で色変え・バッジ表示
 - 外部通知（Slack・メール）なし
 
@@ -118,7 +116,7 @@ GitHub Issuesで作成・更新されたIssueを、本ツールに自動取り�
   - `director_id = NULL`、`engineer_id = NULL`（GitHub assignee はマッピングしない。ディレクターが手動でセット）
 - **重複時の挙動（Upsert）**：`(product_id, github_issue_number)` をキーに既存レコードを判定
   - 既存あり：`title` / GitHub状態 / `github_url` / 同期日時 のみ上書き
-  - **ツール独自項目は保護**：`director_id` / `engineer_id` / `status` / `is_managed` / `display_order` / 予定日・実績日・工数 は同期で上書きしない
+  - **ツール独自項目は保護**：`director_id` / `engineer_id` / `status` / `is_managed` / `display_order` / 予定日・実績日 は同期で上書きしない
 - **PR除外**：GitHub Issues APIは Pull Request も返却するが、`pull_request` フィールドの有無で判定してスキップ
 - **自動反映結果の可視化**：Webhook処理結果を `sync_logs` に履歴保存。画面には最終反映日時・最終ステータスを表示する
 - **再同期結果の可視化**：作成 / 更新 / スキップ / 失敗 の件数をトーストで表示し、`sync_logs` に履歴保存
@@ -148,7 +146,7 @@ GitHub Issuesで作成・更新されたIssueを、本ツールに自動取り�
 | `products` | プロダクトマスタ（名前・説明・表示順） |
 | `product_repositories` | プロダクトに紐付くGitHubリポジトリ（owner・repo・最終同期日時・最終同期ステータス）※同期対象の指定 |
 | `issues` | ISSUE本体（GitHub由来のタイトル・URL・番号・状態、director_id(FK→users)・engineer_id(FK→engineers)・ステータス・product_id(FK)・is_managed・display_order・github_synced_at） |
-| `issue_schedules` | 日付・工数管理（issue_id・予定開始日・実際の開始日・予定終了日・終了日・予定工数・実績工数） |
+| `issue_schedules` | 日付管理（issue_id・予定開始日・実際の開始日・予定終了日・終了日） |
 | `sync_logs` | GitHub自動反映/再同期履歴（product_id・trigger・Webhook delivery ID・実行ディレクター・件数集計・ステータス・エラー内容） |
 
 ---

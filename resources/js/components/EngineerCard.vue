@@ -19,8 +19,8 @@
         <span class="stat-label">完了</span>
       </div>
       <div class="stat">
-        <span class="stat-value">{{ totalHours }}h</span>
-        <span class="stat-label">工数概算</span>
+        <span class="stat-value">{{ wipCount }}</span>
+        <span class="stat-label">作業中</span>
       </div>
     </div>
 
@@ -52,7 +52,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { issues, issueSchedules, calcWorkHours, isOverdue } from '../data/mockData.js'
+import { issues, issueSchedules, isOverdue } from '../data/mockData.js'
 
 const props = defineProps({ member: Object })
 
@@ -62,9 +62,7 @@ const myIssues = computed(() =>
 
 const totalIssues = computed(() => myIssues.value.length)
 const doneCount = computed(() => myIssues.value.filter(i => i.status === '完了').length)
-const totalHours = computed(() =>
-  Math.round(myIssues.value.reduce((sum, i) => sum + calcWorkHours(i.id), 0) * 10) / 10
-)
+const wipCount = computed(() => myIssues.value.filter(i => i.status === '作業中').length)
 const overdueCount = computed(() =>
   myIssues.value.filter(i => {
     const s = issueSchedules.find(sc => sc.issue_id === i.id)

@@ -49,13 +49,13 @@
 
 | メソッド | パス | 概要 |
 |---|---|---|
-| GET | `/api/v1/issues` | 一覧（クエリ: product_id, engineer_id, director_id, status, is_managed, unmanaged_imports） |
+| GET | `/api/v1/issues` | 一覧（クエリ: product_id, engineer_id, director_id, status, is_managed, unmanaged_imports。未指定時は管理対象/未管理を含むすべて） |
 | GET | `/api/v1/issues/{id}` | 詳細（schedule・group含む） |
 | PUT | `/api/v1/issues/{id}` | ツール管理項目の更新（director_id, engineer_id, status, is_managed, group_id） |
 | PATCH | `/api/v1/issues/{id}/status` | ステータスのみ更新（管理表インライン変更用） |
 | PATCH | `/api/v1/issues/{id}/managed` | is_managed フラグ切り替え |
 | DELETE | `/api/v1/issues/{id}` | ツール上の管理対象から除外（GitHub Issue本体は削除しない） |
-| PUT | `/api/v1/issues/{id}/schedule` | 日付4項目・予定工数・実績工数を手動 upsert |
+| PUT | `/api/v1/issues/{id}/schedule` | 日付4項目を手動 upsert |
 
 ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本ツールに取り込む。本APIではタイトル・GitHub URL・Issue番号の手入力作成を提供しない。
 
@@ -87,18 +87,16 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
   "group": { "id": 1, "name": "v1.2 リリース" },
   "schedule": {
     "planned_start": "2026-05-01",
-    "actual_start": null,
     "planned_end": "2026-05-08",
-    "actual_end": null,
-    "planned_hours": 16,
-    "actual_hours": 12.5
+    "actual_start": null,
+    "actual_end": null
   },
   "is_overdue": false,
   "is_due_soon": true
 }
 ```
 
-`github_issue_number` / `github_state` / `github_synced_at` はGitHubから取り込まれたISSUEで必須。`unmanaged_imports=true` クエリは「`is_managed=false` かつ `github_issue_number IS NOT NULL`」の絞り込みで、未追加リストパネルが利用する。
+`github_issue_number` / `github_state` / `github_synced_at` はGitHubから取り込まれたISSUEで必須。管理表フィルターは画面上で「すべて」を初期値とし、「表示中のみ」は `is_managed=true`、「未追加のみ」は `unmanaged_imports=true` を送る。`unmanaged_imports=true` クエリは「`is_managed=false` かつ `github_issue_number IS NOT NULL`」の絞り込みで、未追加リストパネルが利用する。
 
 `PUT /api/v1/issues/{id}` の `group_id` は `issues` テーブルのカラムではなく、`group_issues` の紐付けを更新するための入力値として扱う。`group_id` が数値の場合は同一 `product_id` のグループへ追加または移動し、`group_id: null` の場合は未グループ化する。別プロダクトのグループを指定した場合は `422` を返す。
 
@@ -106,11 +104,9 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
 ```json
 {
   "planned_start": "2026-05-01",
-  "actual_start": "2026-05-02",
   "planned_end": "2026-05-08",
-  "actual_end": null,
-  "planned_hours": 16,
-  "actual_hours": 12.5
+  "actual_start": "2026-05-02",
+  "actual_end": null
 }
 ```
 
@@ -213,7 +209,7 @@ Webhookレスポンス:
 3. `issue.pull_request` が存在する場合はPRとしてスキップ
 4. payloadの `repository.owner.login` / `repository.name` から `product_repositories` を検索。未登録なら `product_id=NULL`, `SyncLog.status='skipped'` のログを残し `202`
 5. `(product_id, issue.number)` でUpsert
-   - 新規: `is_managed=false`, `status='未着手'`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` 同プロダクト最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付・工数を全項目NULLで作成
+   - 新規: `is_managed=false`, `status='未着手'`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` 同プロダクト最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
    - 既存: `title` / `github_state` / `github_url` / `github_synced_at` のみ更新。他のツール独自項目は触らない
 6. `product_repositories.last_synced_at` / `last_sync_status` を更新し、`SyncLog` に `trigger='webhook'` と `github_delivery_id` を保存
 
@@ -222,7 +218,7 @@ Webhookレスポンス:
 2. `GET https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=100&page=N` をページング取得（`Authorization: Bearer {PAT}`、`X-GitHub-Api-Version: 2022-11-28`）
 3. 各要素について `pull_request` キーがあればスキップ（PR除外）
 4. `(product_id, github_issue_number)` でUpsert
-   - 新規: `is_managed=false`, `status='未着手'`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` 同プロダクト最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付・工数を全項目NULLで作成
+   - 新規: `is_managed=false`, `status='未着手'`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` 同プロダクト最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
    - 既存: `title` / `github_state` / `github_url` / `github_synced_at` のみ更新。他のツール独自項目は触らない
 5. `403`+`X-RateLimit-Remaining: 0` または `429` 検出時は `status='partial'`、`error_message` にリセット時刻を記録して打ち切り
 6. `401` / `404` / 5xx は `status='failed'`、`error_message` にレスポンスbodyを記録して打ち切り
@@ -232,7 +228,7 @@ Webhookレスポンス:
 
 | メソッド | パス | 概要 |
 |---|---|---|
-| GET | `/api/v1/table` | 管理表全データ（管理対象ISSUEのみ。グループ+ISSUE+スケジュール+予定/実績工数を一括取得） |
+| GET | `/api/v1/table` | 管理表全データ（管理対象ISSUEのみ。グループ+ISSUE+スケジュールを一括取得） |
 | GET | `/api/v1/dashboard` | エンジニアごとの集計データ |
 
 `GET /api/v1/table` のクエリ:
@@ -264,9 +260,7 @@ Webhookレスポンス:
             "planned_start": "2026-04-01",
             "planned_end": "2026-04-10",
             "actual_start": "2026-04-01",
-            "actual_end": "2026-04-09",
-            "planned_hours": 16,
-            "actual_hours": 12.5
+            "actual_end": "2026-04-09"
           },
           "is_overdue": false,
           "is_due_soon": false
@@ -297,8 +291,6 @@ Webhookレスポンス:
       "status_breakdown": {
         "未着手": 1, "作業中": 2, "テスト中": 0, "完了": 1, "保留": 0
       },
-      "planned_hours": 16,
-      "actual_hours": 12.5,
       "overdue_count": 1,
       "recent_issues": [
         { "id": 3, "title": "...", "status": "作業中", "is_overdue": false }

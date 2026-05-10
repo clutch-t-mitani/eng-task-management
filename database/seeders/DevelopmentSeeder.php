@@ -72,7 +72,7 @@ class DevelopmentSeeder extends Seeder
                 'status' => '完了',
                 'product_name' => 'Product A',
                 'display_order' => 1,
-                'schedule' => ['planned_start' => '2026-04-01', 'actual_start' => '2026-04-01', 'planned_end' => '2026-04-10', 'actual_end' => '2026-04-09', 'planned_hours' => 16, 'actual_hours' => 15.5],
+                'schedule' => ['planned_start' => '2026-04-01', 'actual_start' => '2026-04-01', 'planned_end' => '2026-04-10', 'actual_end' => '2026-04-09'],
             ],
             [
                 'title' => 'パスワードリセット機能の実装',
@@ -82,7 +82,7 @@ class DevelopmentSeeder extends Seeder
                 'status' => '完了',
                 'product_name' => 'Product A',
                 'display_order' => 2,
-                'schedule' => ['planned_start' => '2026-04-05', 'actual_start' => '2026-04-06', 'planned_end' => '2026-04-15', 'actual_end' => '2026-04-16', 'planned_hours' => 20, 'actual_hours' => 22],
+                'schedule' => ['planned_start' => '2026-04-05', 'actual_start' => '2026-04-06', 'planned_end' => '2026-04-15', 'actual_end' => '2026-04-16'],
             ],
             [
                 'title' => 'ダッシュボードのレスポンシブ対応',
@@ -92,7 +92,7 @@ class DevelopmentSeeder extends Seeder
                 'status' => '作業中',
                 'product_name' => 'Product A',
                 'display_order' => 3,
-                'schedule' => ['planned_start' => '2026-04-15', 'actual_start' => '2026-04-15', 'planned_end' => '2026-04-25', 'actual_end' => null, 'planned_hours' => 24, 'actual_hours' => 12.5],
+                'schedule' => ['planned_start' => '2026-04-15', 'actual_start' => '2026-04-15', 'planned_end' => '2026-04-25', 'actual_end' => null],
             ],
             [
                 'title' => 'CSVエクスポート機能',
@@ -102,7 +102,7 @@ class DevelopmentSeeder extends Seeder
                 'status' => 'テスト中',
                 'product_name' => 'Product A',
                 'display_order' => 4,
-                'schedule' => ['planned_start' => '2026-04-10', 'actual_start' => '2026-04-12', 'planned_end' => '2026-04-22', 'actual_end' => null, 'planned_hours' => 18, 'actual_hours' => 17],
+                'schedule' => ['planned_start' => '2026-04-10', 'actual_start' => '2026-04-12', 'planned_end' => '2026-04-22', 'actual_end' => null],
             ],
             [
                 'title' => '通知設定ページの実装',
@@ -112,7 +112,7 @@ class DevelopmentSeeder extends Seeder
                 'status' => '未着手',
                 'product_name' => 'Product A',
                 'display_order' => 5,
-                'schedule' => ['planned_start' => '2026-05-01', 'actual_start' => null, 'planned_end' => '2026-05-08', 'actual_end' => null, 'planned_hours' => 12, 'actual_hours' => null],
+                'schedule' => ['planned_start' => '2026-05-01', 'actual_start' => null, 'planned_end' => '2026-05-08', 'actual_end' => null],
             ],
             [
                 'title' => 'APIレート制限の実装',
@@ -122,7 +122,7 @@ class DevelopmentSeeder extends Seeder
                 'status' => '保留',
                 'product_name' => 'Product A',
                 'display_order' => 6,
-                'schedule' => ['planned_start' => '2026-04-20', 'actual_start' => '2026-04-20', 'planned_end' => '2026-04-27', 'actual_end' => null, 'planned_hours' => 10, 'actual_hours' => 4],
+                'schedule' => ['planned_start' => '2026-04-20', 'actual_start' => '2026-04-20', 'planned_end' => '2026-04-27', 'actual_end' => null],
             ],
             [
                 'title' => 'ユーザー管理画面リニューアル',
@@ -132,7 +132,7 @@ class DevelopmentSeeder extends Seeder
                 'status' => '作業中',
                 'product_name' => 'Product B',
                 'display_order' => 1,
-                'schedule' => ['planned_start' => '2026-05-01', 'actual_start' => '2026-05-02', 'planned_end' => '2026-05-20', 'actual_end' => null, 'planned_hours' => 32, 'actual_hours' => 9],
+                'schedule' => ['planned_start' => '2026-05-01', 'actual_start' => '2026-05-02', 'planned_end' => '2026-05-20', 'actual_end' => null],
             ],
             [
                 'title' => '権限管理機能の追加',
@@ -142,7 +142,7 @@ class DevelopmentSeeder extends Seeder
                 'status' => '未着手',
                 'product_name' => 'Product B',
                 'display_order' => 2,
-                'schedule' => ['planned_start' => '2026-05-15', 'actual_start' => null, 'planned_end' => '2026-05-30', 'actual_end' => null, 'planned_hours' => 28, 'actual_hours' => null],
+                'schedule' => ['planned_start' => '2026-05-15', 'actual_start' => null, 'planned_end' => '2026-05-30', 'actual_end' => null],
             ],
             [
                 'title' => 'バグ修正: 検索結果ページのクラッシュ',
@@ -152,7 +152,7 @@ class DevelopmentSeeder extends Seeder
                 'status' => '作業中',
                 'product_name' => 'Product A',
                 'display_order' => 7,
-                'schedule' => ['planned_start' => '2026-04-20', 'actual_start' => '2026-04-21', 'planned_end' => '2026-04-24', 'actual_end' => null, 'planned_hours' => 8, 'actual_hours' => 6.5],
+                'schedule' => ['planned_start' => '2026-04-20', 'actual_start' => '2026-04-21', 'planned_end' => '2026-04-24', 'actual_end' => null],
             ],
             [
                 'title' => 'パフォーマンス改善: DB クエリ最適化',
@@ -162,9 +162,56 @@ class DevelopmentSeeder extends Seeder
                 'status' => '未着手',
                 'product_name' => 'Product B',
                 'display_order' => 3,
-                'schedule' => ['planned_start' => '2026-05-10', 'actual_start' => null, 'planned_end' => '2026-05-25', 'actual_end' => null, 'planned_hours' => 16, 'actual_hours' => null],
+                'schedule' => ['planned_start' => '2026-05-10', 'actual_start' => null, 'planned_end' => '2026-05-25', 'actual_end' => null],
             ],
         ];
+
+        $bulkIssueTitles = [
+            '請求履歴一覧のページング改善',
+            '通知メールテンプレートの調整',
+            '検索条件の保存機能',
+            '監査ログ一覧の初期表示改善',
+            'CSVインポート時のエラー表示改善',
+            'ダッシュボード集計の境界値テスト',
+            'プロダクト切替時のローディング改善',
+            'GitHub同期ログの詳細表示',
+            'ユーザー削除時の確認文言調整',
+            'スマートフォン表示のテーブル調整',
+        ];
+        $bulkStatuses = ['未着手', '作業中', 'テスト中', '保留', '完了'];
+        $bulkEngineers = ['山田 太郎', '佐藤 花子', '鈴木 一郎'];
+        $bulkDirectors = ['misaki.tanaka@example.com', 'kenta.nakamura@example.com'];
+        $bulkProducts = ['Product A', 'Product B'];
+
+        for ($index = 0; $index < 40; $index++) {
+            $status = $bulkStatuses[$index % count($bulkStatuses)];
+            $productName = $bulkProducts[$index % count($bulkProducts)];
+            $plannedDay = ($index % 24) + 1;
+            $plannedEndDay = min($plannedDay + 5, 28);
+            $actualStart = in_array($status, ['作業中', 'テスト中', '完了'], true)
+                ? sprintf('2026-06-%02d', min($plannedDay + 1, 28))
+                : null;
+            $actualEnd = $status === '完了'
+                ? sprintf('2026-06-%02d', min($plannedEndDay + 1, 28))
+                : null;
+
+            $issues[] = [
+                'title' => $bulkIssueTitles[$index % count($bulkIssueTitles)].sprintf(' #%02d', $index + 1),
+                'github_issue_number' => 400 + $index + 1,
+                'director_email' => $bulkDirectors[$index % count($bulkDirectors)],
+                'engineer_name' => $bulkEngineers[$index % count($bulkEngineers)],
+                'status' => $status,
+                'product_name' => $productName,
+                'display_order' => 20 + $index,
+                'is_managed' => $index % 6 !== 0,
+                'schedule' => [
+                    'planned_start' => sprintf('2026-06-%02d', $plannedDay),
+                    'planned_end' => sprintf('2026-06-%02d', $plannedEndDay),
+                    'actual_start' => $actualStart,
+                    'actual_end' => $actualEnd,
+                ],
+            ];
+        }
 
         foreach ($issues as $issueData) {
             $productId = $productByName[$issueData['product_name']];
@@ -179,7 +226,7 @@ class DevelopmentSeeder extends Seeder
                     'director_id' => $directorByEmail[$issueData['director_email']],
                     'engineer_id' => $engineerByName[$issueData['engineer_name']],
                     'status' => $issueData['status'],
-                    'is_managed' => true,
+                    'is_managed' => $issueData['is_managed'] ?? true,
                     'display_order' => $issueData['display_order'],
                     'github_state' => $issueData['status'] === '完了' ? 'closed' : 'open',
                     'github_synced_at' => now(),

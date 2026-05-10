@@ -51,8 +51,6 @@ class IssueManagementTest extends TestCase
         ]);
         $target->schedule()->create([
             'planned_end' => '2026-05-08',
-            'planned_hours' => 16,
-            'actual_hours' => 4.5,
         ]);
         $this->createIssue([
             'product_id' => $otherProduct->id,
@@ -67,7 +65,8 @@ class IssueManagementTest extends TestCase
             ->assertJsonPath('0.director.name', '田中 美咲')
             ->assertJsonPath('0.engineer.name', '山田 太郎')
             ->assertJsonPath('0.schedule.planned_end', '2026-05-08')
-            ->assertJsonPath('0.schedule.actual_hours', 4.5)
+            ->assertJsonMissingPath('0.schedule.planned_hours')
+            ->assertJsonMissingPath('0.schedule.actual_hours')
             ->assertJsonPath('0.is_overdue', false)
             ->assertJsonPath('0.is_due_soon', true);
 
@@ -202,15 +201,13 @@ class IssueManagementTest extends TestCase
 
         $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
             'planned_start' => '2026-05-01',
-            'actual_start' => '2026-05-02',
             'planned_end' => '2026-05-10',
+            'actual_start' => '2026-05-02',
             'actual_end' => null,
-            'planned_hours' => 12.5,
-            'actual_hours' => 3,
         ])->assertOk()
             ->assertJsonPath('schedule.planned_start', '2026-05-01')
-            ->assertJsonPath('schedule.planned_hours', 12.5)
-            ->assertJsonPath('schedule.actual_hours', 3);
+            ->assertJsonMissingPath('schedule.planned_hours')
+            ->assertJsonMissingPath('schedule.actual_hours');
 
         $this->actingAs($actor)->deleteJson("/api/v1/issues/{$issue->id}")
             ->assertOk()
@@ -235,14 +232,28 @@ class IssueManagementTest extends TestCase
             ->assertJsonPath('0.id', $unmanaged->id);
     }
 
-    public function test_default_issue_index_returns_only_managed_issues(): void
+    public function test_default_issue_index_returns_all_issues(): void
+    {
+        $actor = User::factory()->create();
+
+        $managed = $this->createIssue(['is_managed' => true, 'github_issue_number' => 101]);
+        $unmanaged = $this->createIssue(['is_managed' => false, 'github_issue_number' => 102]);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues')
+            ->assertOk()
+            ->assertJsonCount(2)
+            ->assertJsonPath('0.id', $managed->id)
+            ->assertJsonPath('1.id', $unmanaged->id);
+    }
+
+    public function test_can_filter_managed_issues_explicitly(): void
     {
         $actor = User::factory()->create();
 
         $managed = $this->createIssue(['is_managed' => true, 'github_issue_number' => 101]);
         $this->createIssue(['is_managed' => false, 'github_issue_number' => 102]);
 
-        $this->actingAs($actor)->getJson('/api/v1/issues')
+        $this->actingAs($actor)->getJson('/api/v1/issues?is_managed=true')
             ->assertOk()
             ->assertJsonCount(1)
             ->assertJsonPath('0.id', $managed->id);
@@ -266,17 +277,16 @@ class IssueManagementTest extends TestCase
 
         $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
             'planned_end' => '2026/05/10',
-            'planned_hours' => -1,
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['planned_end', 'planned_hours']);
+            ->assertJsonValidationErrors(['planned_end']);
     }
 
     public function test_development_seeder_adds_github_imported_issues_with_schedules(): void
     {
         $this->seed(DevelopmentSeeder::class);
 
-        $this->assertDatabaseCount('issues', 10);
-        $this->assertDatabaseCount('issue_schedules', 10);
+        $this->assertDatabaseCount('issues', 50);
+        $this->assertDatabaseCount('issue_schedules', 50);
         $this->assertDatabaseHas('issues', [
             'title' => 'ログイン画面のバリデーション修正',
             'github_issue_number' => 101,
@@ -285,7 +295,11 @@ class IssueManagementTest extends TestCase
         ]);
         $this->assertDatabaseHas('issue_schedules', [
             'planned_start' => '2026-04-01',
-            'actual_hours' => 15.5,
+        ]);
+        $this->assertDatabaseHas('issues', [
+            'title' => '請求履歴一覧のページング改善 #01',
+            'github_issue_number' => 401,
+            'is_managed' => false,
         ]);
     }
 
