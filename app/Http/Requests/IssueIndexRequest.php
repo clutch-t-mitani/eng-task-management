@@ -59,6 +59,16 @@ class IssueIndexRequest extends FormRequest
             'status.*' => ['string', Rule::in(Issue::STATUSES)],
             'is_managed' => ['nullable', 'boolean'],
             'unmanaged_imports' => ['nullable', 'boolean'],
+            'planned_start_from' => ['nullable', 'date_format:Y-m-d'],
+            'planned_start_to' => ['nullable', 'date_format:Y-m-d'],
+            'planned_end_from' => ['nullable', 'date_format:Y-m-d'],
+            'planned_end_to' => ['nullable', 'date_format:Y-m-d'],
+            'actual_start_from' => ['nullable', 'date_format:Y-m-d'],
+            'actual_start_to' => ['nullable', 'date_format:Y-m-d'],
+            'actual_end_from' => ['nullable', 'date_format:Y-m-d'],
+            'actual_end_to' => ['nullable', 'date_format:Y-m-d'],
+            'flags' => ['nullable', 'array'],
+            'flags.*' => ['string', Rule::in(['overdue', 'due_soon'])],
         ];
     }
 }

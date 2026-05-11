@@ -281,6 +281,104 @@ class IssueManagementTest extends TestCase
             ->assertJsonValidationErrors(['planned_end']);
     }
 
+    public function test_can_filter_issues_by_date_ranges(): void
+    {
+        $actor = User::factory()->create();
+        $product = Product::query()->create(['name' => 'Product A', 'display_order' => 1]);
+
+        $inRange = $this->createIssue(['product_id' => $product->id, 'github_issue_number' => 301]);
+        $inRange->schedule()->create([
+            'planned_start' => '2026-05-01',
+            'planned_end' => '2026-05-15',
+        ]);
+
+        $outOfRange = $this->createIssue(['product_id' => $product->id, 'github_issue_number' => 302]);
+        $outOfRange->schedule()->create([
+            'planned_start' => '2026-06-01',
+            'planned_end' => '2026-06-30',
+        ]);
+
+        $noSchedule = $this->createIssue(['product_id' => $product->id, 'github_issue_number' => 303]);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?'.http_build_query([
+            'planned_start_from' => '2026-04-01',
+            'planned_start_to' => '2026-05-31',
+        ]))
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $inRange->id);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?'.http_build_query([
+            'planned_end_from' => '2026-05-01',
+            'planned_end_to' => '2026-05-31',
+        ]))
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $inRange->id);
+    }
+
+    public function test_can_filter_issues_by_flags(): void
+    {
+        Carbon::setTestNow('2026-05-10 09:00:00');
+        $actor = User::factory()->create();
+        $product = Product::query()->create(['name' => 'Product A', 'display_order' => 1]);
+
+        $overdue = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 401]);
+        $overdue->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
+
+        $dueSoon = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 402]);
+        $dueSoon->schedule()->create(['planned_end' => '2026-05-12', 'actual_end' => null]);
+
+        $normal = $this->createIssue(['product_id' => $product->id, 'status' => '未着手', 'github_issue_number' => 403]);
+        $normal->schedule()->create(['planned_end' => '2026-06-01', 'actual_end' => null]);
+
+        $done = $this->createIssue(['product_id' => $product->id, 'status' => '完了', 'github_issue_number' => 404]);
+        $done->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?flags[]=overdue')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $overdue->id);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?flags[]=due_soon')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $dueSoon->id);
+    }
+
+    public function test_can_filter_issues_by_multiple_flags(): void
+    {
+        Carbon::setTestNow('2026-05-10 09:00:00');
+        $actor = User::factory()->create();
+        $product = Product::query()->create(['name' => 'Product A', 'display_order' => 1]);
+
+        $overdue = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 501]);
+        $overdue->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
+
+        $dueSoon = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 502]);
+        $dueSoon->schedule()->create(['planned_end' => '2026-05-12', 'actual_end' => null]);
+
+        $normal = $this->createIssue(['product_id' => $product->id, 'status' => '未着手', 'github_issue_number' => 503]);
+        $normal->schedule()->create(['planned_end' => '2026-06-01', 'actual_end' => null]);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?'.http_build_query(['flags' => ['overdue', 'due_soon']]))
+            ->assertOk()
+            ->assertJsonCount(2);
+    }
+
+    public function test_date_filter_validation_rejects_invalid_format(): void
+    {
+        $actor = User::factory()->create();
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?planned_start_from=2026/05/01')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['planned_start_from']);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?flags[]=invalid_flag')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['flags.0']);
+    }
+
     public function test_development_seeder_adds_github_imported_issues_with_schedules(): void
     {
         $this->seed(DevelopmentSeeder::class);

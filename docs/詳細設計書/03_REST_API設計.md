@@ -49,7 +49,7 @@
 
 | メソッド | パス | 概要 |
 |---|---|---|
-| GET | `/api/v1/issues` | 一覧（クエリ: product_id, engineer_id, director_id, status, is_managed, unmanaged_imports。未指定時は管理対象/未管理を含むすべて） |
+| GET | `/api/v1/issues` | 一覧（クエリ: product_id, engineer_id, director_id, status, is_managed, unmanaged_imports, planned_start_from/to, planned_end_from/to, actual_start_from/to, actual_end_from/to, flags[]。未指定時は管理対象/未管理を含むすべて） |
 | GET | `/api/v1/issues/{id}` | 詳細（schedule・group含む） |
 | PUT | `/api/v1/issues/{id}` | ツール管理項目の更新（director_id, engineer_id, status, is_managed, group_id） |
 | PATCH | `/api/v1/issues/{id}/status` | ステータスのみ更新（管理表インライン変更用） |
@@ -97,6 +97,23 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
 ```
 
 `github_issue_number` / `github_state` / `github_synced_at` はGitHubから取り込まれたISSUEで必須。管理表フィルターは画面上で「すべて」を初期値とし、「表示中のみ」は `is_managed=true`、「未追加のみ」は `unmanaged_imports=true` を送る。`unmanaged_imports=true` クエリは「`is_managed=false` かつ `github_issue_number IS NOT NULL`」の絞り込みで、未追加リストパネルが利用する。
+
+**日付フィルタークエリパラメータ（YYYY-MM-DD）**
+
+| パラメータ | 説明 |
+|---|---|
+| `planned_start_from` | 予定開始日 ≥ 指定日 |
+| `planned_start_to` | 予定開始日 ≤ 指定日 |
+| `planned_end_from` | 予定終了日 ≥ 指定日 |
+| `planned_end_to` | 予定終了日 ≤ 指定日 |
+| `actual_start_from` | 実績開始日 ≥ 指定日 |
+| `actual_start_to` | 実績開始日 ≤ 指定日 |
+| `actual_end_from` | 実績終了日 ≥ 指定日 |
+| `actual_end_to` | 実績終了日 ≤ 指定日 |
+| `flags[]` | `overdue`（期限超過）・`due_soon`（期限近い）の配列。複数指定時はOR結合 |
+
+`flags[]=overdue`: `planned_end < today AND actual_end IS NULL AND status ≠ 完了`  
+`flags[]=due_soon`: `planned_end` が today〜today+3 AND `actual_end IS NULL` AND `status ≠ 完了`
 
 `PUT /api/v1/issues/{id}` の `group_id` は `issues` テーブルのカラムではなく、`group_issues` の紐付けを更新するための入力値として扱う。`group_id` が数値の場合は同一 `product_id` のグループへ追加または移動し、`group_id: null` の場合は未グループ化する。別プロダクトのグループを指定した場合は `422` を返す。
 

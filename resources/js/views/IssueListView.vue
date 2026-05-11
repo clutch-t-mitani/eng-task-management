@@ -21,47 +21,90 @@
         <p v-if="errorMessage" class="alert alert-error">{{ errorMessage }}</p>
 
         <form class="issue-filter-bar" @submit.prevent="fetchIssues">
-            <label class="filter-product">
-                <span>プロダクト</span>
-                <select v-model="filters.product_id" multiple>
-                    <option v-for="product in productStore.products" :key="product.id" :value="String(product.id)">
-                        {{ product.name }}
-                    </option>
-                </select>
-            </label>
-            <label class="filter-member">
-                <span>エンジニア</span>
-                <select v-model="filters.engineer_id" multiple>
-                    <option v-for="engineer in engineerStore.engineers" :key="engineer.id" :value="String(engineer.id)">
-                        {{ engineer.name }}
-                    </option>
-                </select>
-            </label>
-            <label class="filter-member">
-                <span>ディレクター</span>
-                <select v-model="filters.director_id" multiple>
-                    <option v-for="user in userStore.users" :key="user.id" :value="String(user.id)">
-                        {{ user.name }}
-                    </option>
-                </select>
-            </label>
-            <label class="filter-status">
-                <span>ステータス</span>
-                <select v-model="filters.status" multiple>
-                    <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
-                </select>
-            </label>
-            <label class="filter-mode">
-                <span>管理表</span>
-                <select v-model="filters.mode">
-                    <option value="all">すべて</option>
-                    <option value="managed">表示中のみ</option>
-                    <option value="unmanaged_imports">未追加のみ</option>
-                </select>
-            </label>
-            <div class="issue-filter-actions">
-                <button class="btn btn-secondary" type="button" @click="resetFilters">リセット</button>
-                <button class="btn btn-primary" type="submit">絞り込み</button>
+            <div class="filter-row">
+                <label class="filter-product">
+                    <span>プロダクト</span>
+                    <select v-model="filters.product_id" multiple>
+                        <option v-for="product in productStore.products" :key="product.id" :value="String(product.id)">
+                            {{ product.name }}
+                        </option>
+                    </select>
+                </label>
+                <label class="filter-member">
+                    <span>エンジニア</span>
+                    <select v-model="filters.engineer_id" multiple>
+                        <option v-for="engineer in engineerStore.engineers" :key="engineer.id" :value="String(engineer.id)">
+                            {{ engineer.name }}
+                        </option>
+                    </select>
+                </label>
+                <label class="filter-member">
+                    <span>ディレクター</span>
+                    <select v-model="filters.director_id" multiple>
+                        <option v-for="user in userStore.users" :key="user.id" :value="String(user.id)">
+                            {{ user.name }}
+                        </option>
+                    </select>
+                </label>
+                <label class="filter-status">
+                    <span>ステータス</span>
+                    <select v-model="filters.status" multiple>
+                        <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
+                    </select>
+                </label>
+                <label class="filter-mode">
+                    <span>管理表</span>
+                    <select v-model="filters.mode">
+                        <option value="all">すべて</option>
+                        <option value="managed">表示中のみ</option>
+                        <option value="unmanaged_imports">未追加のみ</option>
+                    </select>
+                </label>
+            </div>
+            <div class="filter-row filter-row-dates">
+                <div class="filter-date-range">
+                    <span>予定開始</span>
+                    <div class="filter-date-inputs">
+                        <input type="date" v-model="filters.planned_start_from">
+                        <span class="filter-date-sep">〜</span>
+                        <input type="date" v-model="filters.planned_start_to">
+                    </div>
+                </div>
+                <div class="filter-date-range">
+                    <span>予定終了</span>
+                    <div class="filter-date-inputs">
+                        <input type="date" v-model="filters.planned_end_from">
+                        <span class="filter-date-sep">〜</span>
+                        <input type="date" v-model="filters.planned_end_to">
+                    </div>
+                </div>
+                <div class="filter-date-range">
+                    <span>実績開始</span>
+                    <div class="filter-date-inputs">
+                        <input type="date" v-model="filters.actual_start_from">
+                        <span class="filter-date-sep">〜</span>
+                        <input type="date" v-model="filters.actual_start_to">
+                    </div>
+                </div>
+                <div class="filter-date-range">
+                    <span>実績終了</span>
+                    <div class="filter-date-inputs">
+                        <input type="date" v-model="filters.actual_end_from">
+                        <span class="filter-date-sep">〜</span>
+                        <input type="date" v-model="filters.actual_end_to">
+                    </div>
+                </div>
+                <label class="filter-flags">
+                    <span>フラグ</span>
+                    <select v-model="filters.flags" multiple>
+                        <option value="overdue">期限超過</option>
+                        <option value="due_soon">期限近い</option>
+                    </select>
+                </label>
+                <div class="issue-filter-actions">
+                    <button class="btn btn-secondary" type="button" @click="resetFilters">リセット</button>
+                    <button class="btn btn-primary" type="submit">絞り込み</button>
+                </div>
             </div>
         </form>
 
@@ -214,6 +257,15 @@ const filters = reactive({
     director_id: [],
     status: [],
     mode: 'all',
+    planned_start_from: '',
+    planned_start_to: '',
+    planned_end_from: '',
+    planned_end_to: '',
+    actual_start_from: '',
+    actual_start_to: '',
+    actual_end_from: '',
+    actual_end_to: '',
+    flags: [],
 });
 const sortState = reactive({
     key: 'default',
@@ -315,6 +367,20 @@ function filterParams() {
         params.unmanaged_imports = true;
     }
 
+    const dateKeys = [
+        'planned_start_from', 'planned_start_to',
+        'planned_end_from', 'planned_end_to',
+        'actual_start_from', 'actual_start_to',
+        'actual_end_from', 'actual_end_to',
+    ];
+    for (const key of dateKeys) {
+        if (filters[key]) params[key] = filters[key];
+    }
+
+    if (filters.flags.length > 0) {
+        params.flags = [...filters.flags];
+    }
+
     return params;
 }
 
@@ -331,6 +397,15 @@ function defaultFilters() {
         director_id: [],
         status: [],
         mode: 'all',
+        planned_start_from: '',
+        planned_start_to: '',
+        planned_end_from: '',
+        planned_end_to: '',
+        actual_start_from: '',
+        actual_start_to: '',
+        actual_end_from: '',
+        actual_end_to: '',
+        flags: [],
     };
 }
 
@@ -353,6 +428,15 @@ function saveFilters() {
         director_id: [...filters.director_id],
         status: [...filters.status],
         mode: filters.mode,
+        planned_start_from: filters.planned_start_from,
+        planned_start_to: filters.planned_start_to,
+        planned_end_from: filters.planned_end_from,
+        planned_end_to: filters.planned_end_to,
+        actual_start_from: filters.actual_start_from,
+        actual_start_to: filters.actual_start_to,
+        actual_end_from: filters.actual_end_from,
+        actual_end_to: filters.actual_end_to,
+        flags: [...filters.flags],
     }));
 }
 
@@ -374,6 +458,19 @@ function applyFilters(nextFilters) {
     if (nextFilters.mode === 'unmanaged' || nextFilters.mode === 'unmanaged_imports') {
         filters.mode = 'unmanaged_imports';
     }
+
+    const dateKeys = [
+        'planned_start_from', 'planned_start_to',
+        'planned_end_from', 'planned_end_to',
+        'actual_start_from', 'actual_start_to',
+        'actual_end_from', 'actual_end_to',
+    ];
+    for (const key of dateKeys) {
+        const v = nextFilters[key];
+        filters[key] = (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : '';
+    }
+
+    filters.flags = normalizeFilterArray(nextFilters.flags).filter((f) => ['overdue', 'due_soon'].includes(f));
 }
 
 function normalizeFilterArray(value) {
