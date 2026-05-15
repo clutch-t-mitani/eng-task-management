@@ -3,7 +3,7 @@
         <header class="master-header">
             <div>
                 <h1>ISSUE一覧</h1>
-                <p>GitHubから取り込まれたISSUEの管理項目とスケジュールを確認・更新します。</p>
+                <!-- <p>GitHubから取り込まれたISSUEの管理項目とスケジュールを確認・更新します。</p> -->
             </div>
             <button class="btn btn-primary" type="button" :disabled="issueStore.loading" @click="fetchIssues">
                 再読み込み
@@ -20,216 +20,356 @@
         </div>
         <p v-if="errorMessage" class="alert alert-error">{{ errorMessage }}</p>
 
-        <form class="issue-filter-bar" @submit.prevent="fetchIssues">
-            <div class="filter-row">
-                <label class="filter-product">
-                    <span>プロダクト</span>
-                    <select v-model="filters.product_id" multiple>
-                        <option v-for="product in productStore.products" :key="product.id" :value="String(product.id)">
-                            {{ product.name }}
-                        </option>
-                    </select>
-                </label>
-                <label class="filter-member">
-                    <span>エンジニア</span>
-                    <select v-model="filters.engineer_id" multiple>
-                        <option v-for="engineer in engineerStore.engineers" :key="engineer.id" :value="String(engineer.id)">
-                            {{ engineer.name }}
-                        </option>
-                    </select>
-                </label>
-                <label class="filter-member">
-                    <span>ディレクター</span>
-                    <select v-model="filters.director_id" multiple>
-                        <option v-for="user in userStore.users" :key="user.id" :value="String(user.id)">
-                            {{ user.name }}
-                        </option>
-                    </select>
-                </label>
-                <label class="filter-status">
-                    <span>ステータス</span>
-                    <select v-model="filters.status" multiple>
-                        <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
-                    </select>
-                </label>
-                <label class="filter-mode">
-                    <span>管理表</span>
-                    <select v-model="filters.mode">
-                        <option value="all">すべて</option>
-                        <option value="managed">表示中のみ</option>
-                        <option value="unmanaged_imports">未追加のみ</option>
-                    </select>
-                </label>
+        <form class="issue-filter-panel" @submit.prevent="applyDraftFilters">
+            <div class="filter-panel-grid">
+                <div class="filter-section-toggle-row">
+                    <button
+                        class="filter-section-toggle"
+                        type="button"
+                        :aria-expanded="isMainFiltersOpen"
+                        @click="isMainFiltersOpen = !isMainFiltersOpen"
+                    >
+                        <span>基本条件</span>
+                        <span>{{ isMainFiltersOpen ? '基本条件を閉じる' : '基本条件を開く' }}</span>
+                        <span class="filter-chevron" aria-hidden="true">{{ isMainFiltersOpen ? '⌃' : '⌄' }}</span>
+                    </button>
+                </div>
+
+                <template v-if="isMainFiltersOpen">
+                    <div class="filter-field filter-menu-field">
+                        <span>プロダクト</span>
+                        <button class="filter-select-button" type="button" @click="toggleFilterMenu('product_id')">
+                            <span>{{ selectedOptionLabel(draftFilters.product_id, productStore.products) }}</span>
+                            <span class="filter-chevron" aria-hidden="true">⌄</span>
+                        </button>
+                        <div v-if="openFilterMenu === 'product_id'" class="filter-menu">
+                            <label class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.product_id.length === 0"
+                                    @change="clearDraftSelection('product_id')"
+                                >
+                                <span>すべて</span>
+                            </label>
+                            <label v-for="product in productStore.products" :key="product.id" class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.product_id.includes(String(product.id))"
+                                    @change="toggleDraftSelection('product_id', String(product.id))"
+                                >
+                                <span>{{ product.name }}</span>
+                            </label>
+                            <button class="filter-menu-close" type="button" @click="closeFilterMenu">閉じる</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-field filter-menu-field">
+                        <span>エンジニア</span>
+                        <button class="filter-select-button" type="button" @click="toggleFilterMenu('engineer_id')">
+                            <span>{{ selectedOptionLabel(draftFilters.engineer_id, engineerStore.engineers) }}</span>
+                            <span class="filter-chevron" aria-hidden="true">⌄</span>
+                        </button>
+                        <div v-if="openFilterMenu === 'engineer_id'" class="filter-menu">
+                            <label class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.engineer_id.length === 0"
+                                    @change="clearDraftSelection('engineer_id')"
+                                >
+                                <span>すべて</span>
+                            </label>
+                            <label v-for="engineer in engineerStore.engineers" :key="engineer.id" class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.engineer_id.includes(String(engineer.id))"
+                                    @change="toggleDraftSelection('engineer_id', String(engineer.id))"
+                                >
+                                <span>{{ engineer.name }}</span>
+                            </label>
+                            <button class="filter-menu-close" type="button" @click="closeFilterMenu">閉じる</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-field filter-menu-field">
+                        <span>ステータス</span>
+                        <button class="filter-select-button" type="button" @click="toggleFilterMenu('status')">
+                            <span>{{ selectedStatusLabel(draftFilters.status) }}</span>
+                            <span class="filter-chevron" aria-hidden="true">⌄</span>
+                        </button>
+                        <div v-if="openFilterMenu === 'status'" class="filter-menu">
+                            <label class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.status.length === 0"
+                                    @change="clearDraftSelection('status')"
+                                >
+                                <span>すべて</span>
+                            </label>
+                            <label v-for="status in statuses" :key="status" class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.status.includes(status)"
+                                    @change="toggleDraftSelection('status', status)"
+                                >
+                                <span>{{ status }}</span>
+                            </label>
+                            <button class="filter-menu-close" type="button" @click="closeFilterMenu">閉じる</button>
+                        </div>
+                    </div>
+
+                    <label class="filter-field">
+                        <span>管理表</span>
+                        <select v-model="draftFilters.mode">
+                            <option value="all">すべて</option>
+                            <option value="managed">表示中のみ</option>
+                            <option value="unmanaged_imports">未追加のみ</option>
+                        </select>
+                    </label>
+                </template>
+
+                <div class="filter-section-toggle-row">
+                    <button
+                        class="filter-section-toggle"
+                        type="button"
+                        :aria-expanded="isDateFiltersOpen"
+                        @click="isDateFiltersOpen = !isDateFiltersOpen"
+                    >
+                        <span>詳細条件</span>
+                        <span>{{ isDateFiltersOpen ? '詳細条件を閉じる' : '詳細条件を開く' }}</span>
+                        <span class="filter-chevron" aria-hidden="true">{{ isDateFiltersOpen ? '⌃' : '⌄' }}</span>
+                    </button>
+                </div>
+
+                <template v-if="isDateFiltersOpen">
+                    <div class="filter-field filter-menu-field">
+                        <span>ディレクター</span>
+                        <button class="filter-select-button" type="button" @click="toggleFilterMenu('director_id')">
+                            <span>{{ selectedOptionLabel(draftFilters.director_id, userStore.users) }}</span>
+                            <span class="filter-chevron" aria-hidden="true">⌄</span>
+                        </button>
+                        <div v-if="openFilterMenu === 'director_id'" class="filter-menu">
+                            <label class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.director_id.length === 0"
+                                    @change="clearDraftSelection('director_id')"
+                                >
+                                <span>すべて</span>
+                            </label>
+                            <label v-for="user in userStore.users" :key="user.id" class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.director_id.includes(String(user.id))"
+                                    @change="toggleDraftSelection('director_id', String(user.id))"
+                                >
+                                <span>{{ user.name }}</span>
+                            </label>
+                            <button class="filter-menu-close" type="button" @click="closeFilterMenu">閉じる</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-field filter-menu-field">
+                        <span>フラグ</span>
+                        <button class="filter-select-button" type="button" @click="toggleFilterMenu('flags')">
+                            <span>{{ selectedFlagLabel(draftFilters.flags) }}</span>
+                            <span class="filter-chevron" aria-hidden="true">⌄</span>
+                        </button>
+                        <div v-if="openFilterMenu === 'flags'" class="filter-menu">
+                            <label class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.flags.length === 0"
+                                    @change="clearDraftSelection('flags')"
+                                >
+                                <span>すべて</span>
+                            </label>
+                            <label v-for="flag in flagOptions" :key="flag.value" class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.flags.includes(flag.value)"
+                                    @change="toggleDraftSelection('flags', flag.value)"
+                                >
+                                <span>{{ flag.label }}</span>
+                            </label>
+                            <button class="filter-menu-close" type="button" @click="closeFilterMenu">閉じる</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-field filter-date-range">
+                        <span>予定開始</span>
+                        <div class="filter-date-inputs">
+                            <input type="date" v-model="draftFilters.planned_start_from">
+                            <span class="filter-date-sep">〜</span>
+                            <input type="date" v-model="draftFilters.planned_start_to">
+                        </div>
+                    </div>
+
+                    <div class="filter-field filter-date-range">
+                        <span>予定終了</span>
+                        <div class="filter-date-inputs">
+                            <input type="date" v-model="draftFilters.planned_end_from">
+                            <span class="filter-date-sep">〜</span>
+                            <input type="date" v-model="draftFilters.planned_end_to">
+                        </div>
+                    </div>
+
+                    <div class="filter-field filter-date-range">
+                        <span>実績開始</span>
+                        <div class="filter-date-inputs">
+                            <input type="date" v-model="draftFilters.actual_start_from">
+                            <span class="filter-date-sep">〜</span>
+                            <input type="date" v-model="draftFilters.actual_start_to">
+                        </div>
+                    </div>
+
+                    <div class="filter-field filter-date-range">
+                        <span>実績終了</span>
+                        <div class="filter-date-inputs">
+                            <input type="date" v-model="draftFilters.actual_end_from">
+                            <span class="filter-date-sep">〜</span>
+                            <input type="date" v-model="draftFilters.actual_end_to">
+                        </div>
+                    </div>
+                </template>
             </div>
-            <div class="filter-row filter-row-dates">
-                <div class="filter-date-range">
-                    <span>予定開始</span>
-                    <div class="filter-date-inputs">
-                        <input type="date" v-model="filters.planned_start_from">
-                        <span class="filter-date-sep">〜</span>
-                        <input type="date" v-model="filters.planned_start_to">
-                    </div>
-                </div>
-                <div class="filter-date-range">
-                    <span>予定終了</span>
-                    <div class="filter-date-inputs">
-                        <input type="date" v-model="filters.planned_end_from">
-                        <span class="filter-date-sep">〜</span>
-                        <input type="date" v-model="filters.planned_end_to">
-                    </div>
-                </div>
-                <div class="filter-date-range">
-                    <span>実績開始</span>
-                    <div class="filter-date-inputs">
-                        <input type="date" v-model="filters.actual_start_from">
-                        <span class="filter-date-sep">〜</span>
-                        <input type="date" v-model="filters.actual_start_to">
-                    </div>
-                </div>
-                <div class="filter-date-range">
-                    <span>実績終了</span>
-                    <div class="filter-date-inputs">
-                        <input type="date" v-model="filters.actual_end_from">
-                        <span class="filter-date-sep">〜</span>
-                        <input type="date" v-model="filters.actual_end_to">
-                    </div>
-                </div>
-                <label class="filter-flags">
-                    <span>フラグ</span>
-                    <select v-model="filters.flags" multiple>
-                        <option value="overdue">期限超過</option>
-                        <option value="due_soon">期限近い</option>
-                    </select>
-                </label>
-                <div class="issue-filter-actions">
-                    <button class="btn btn-secondary" type="button" @click="resetFilters">リセット</button>
-                    <button class="btn btn-primary" type="submit">絞り込み</button>
-                </div>
+
+            <div class="issue-filter-actions">
+                <button class="btn btn-secondary" type="button" @click="resetFilters">
+                    絞り込み解除
+                </button>
+                <button class="btn btn-primary" type="submit">
+                    絞り込み
+                </button>
             </div>
         </form>
 
         <div class="master-panel issue-panel">
             <p v-if="issueStore.loading" class="empty-state">読み込み中です。</p>
-            <p v-else-if="issueStore.issues.length === 0" class="empty-state">
-                {{ emptyStateMessage }}
-            </p>
-            <div v-else class="issue-table-wrap">
-                <table class="issue-table">
-                    <colgroup>
-                        <col
-                            v-for="column in sortableColumns"
-                            :key="column.key"
-                            :style="{ width: column.width }"
-                        >
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th
+            <template v-else>
+                <div class="issue-count-summary" aria-live="polite">
+                    表示件数: {{ visibleIssueCount }}件
+                </div>
+                <p v-if="issueStore.issues.length === 0" class="empty-state">
+                    {{ emptyStateMessage }}
+                </p>
+                <div v-else class="issue-table-wrap">
+                    <table class="issue-table">
+                        <colgroup>
+                            <col
                                 v-for="column in sortableColumns"
                                 :key="column.key"
-                                :aria-sort="sortState.key === column.key ? sortAriaValue : 'none'"
+                                :style="{ width: column.width }"
                             >
-                                <button
-                                    class="issue-sort-button"
-                                    type="button"
-                                    :aria-label="`${column.label}で並び替え`"
-                                    @click="toggleSort(column.key)"
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th
+                                    v-for="column in sortableColumns"
+                                    :key="column.key"
+                                    :aria-sort="sortState.key === column.key ? sortAriaValue : 'none'"
                                 >
-                                    <span>{{ column.label }}</span>
-                                    <span class="issue-sort-icon" aria-hidden="true">{{ sortIcon(column.key) }}</span>
-                                </button>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="issue in sortedIssues" :key="issue.id">
-                            <td class="issue-title-cell">
-                                <a :href="issue.github_url" target="_blank" rel="noreferrer">
-                                    #{{ issue.github_issue_number }} {{ issue.title }}
-                                </a>
-                                <div class="issue-title-meta">
-                                    <span :class="['github-state', `github-state-${issue.github_state}`]">
-                                        {{ issue.github_state }}
-                                    </span>
-                                    <span>同期: {{ formatDateTime(issue.github_synced_at) }}</span>
-                                </div>
-                            </td>
-                            <td>{{ productName(issue.product_id) }}</td>
-                            <td>
-                                <select
-                                    :value="issue.director?.id ?? ''"
-                                    @change="updateIssue(issue, { director_id: normalizeNullableId($event.target.value) })"
-                                >
-                                    <option value="">未割当</option>
-                                    <option v-for="user in userStore.users" :key="user.id" :value="user.id">
-                                        {{ user.name }}
-                                    </option>
-                                </select>
-                            </td>
-                            <td>
-                                <select
-                                    :value="issue.engineer?.id ?? ''"
-                                    @change="updateIssue(issue, { engineer_id: normalizeNullableId($event.target.value) })"
-                                >
-                                    <option value="">未割当</option>
-                                    <option v-for="engineer in engineerStore.engineers" :key="engineer.id" :value="engineer.id">
-                                        {{ engineer.name }}
-                                    </option>
-                                </select>
-                            </td>
-                            <td>
-                                <select :value="issue.status" @change="updateStatus(issue, $event.target.value)">
-                                    <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
-                                </select>
-                            </td>
-                            <td>
-                                <button
-                                    :class="['btn', issue.is_managed ? 'btn-secondary' : 'btn-primary']"
-                                    type="button"
-                                    @click="toggleManaged(issue)"
-                                >
-                                    {{ issue.is_managed ? '表示中' : '追加' }}
-                                </button>
-                            </td>
-                            <td>
-                                <input
-                                    :value="issue.schedule?.planned_start ?? ''"
-                                    type="date"
-                                    @change="updateSchedule(issue, { planned_start: emptyToNull($event.target.value) })"
-                                >
-                            </td>
-                            <td>
-                                <input
-                                    :value="issue.schedule?.planned_end ?? ''"
-                                    type="date"
-                                    @change="updateSchedule(issue, { planned_end: emptyToNull($event.target.value) })"
-                                >
-                            </td>
-                            <td>
-                                <input
-                                    :value="issue.schedule?.actual_start ?? ''"
-                                    type="date"
-                                    @change="updateSchedule(issue, { actual_start: emptyToNull($event.target.value) })"
-                                >
-                            </td>
-                            <td>
-                                <input
-                                    :value="issue.schedule?.actual_end ?? ''"
-                                    type="date"
-                                    @change="updateSchedule(issue, { actual_end: emptyToNull($event.target.value) })"
-                                >
-                            </td>
-                            <td>
-                                <div class="issue-flags">
-                                    <span v-if="issue.is_overdue" class="flag flag-danger">期日超過</span>
-                                    <span v-if="issue.is_due_soon" class="flag flag-warning">期日間近</span>
-                                    <span v-if="!issue.is_overdue && !issue.is_due_soon" class="issue-muted">-</span>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                                    <button
+                                        class="issue-sort-button"
+                                        type="button"
+                                        :aria-label="`${column.label}で並び替え`"
+                                        @click="toggleSort(column.key)"
+                                    >
+                                        <span>{{ column.label }}</span>
+                                        <span class="issue-sort-icon" aria-hidden="true">{{ sortIcon(column.key) }}</span>
+                                    </button>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="issue in sortedIssues" :key="issue.id">
+                                <td class="issue-title-cell">
+                                    <a :href="issue.github_url" target="_blank" rel="noreferrer">
+                                        #{{ issue.github_issue_number }} {{ issue.title }}
+                                    </a>
+                                    <div class="issue-title-meta">
+                                        <span :class="['github-state', `github-state-${issue.github_state}`]">
+                                            {{ issue.github_state }}
+                                        </span>
+                                        <span>同期: {{ formatDateTime(issue.github_synced_at) }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ productName(issue.product_id) }}</td>
+                                <td>
+                                    <select
+                                        :value="issue.director?.id ?? ''"
+                                        @change="updateIssue(issue, { director_id: normalizeNullableId($event.target.value) })"
+                                    >
+                                        <option value="">未割当</option>
+                                        <option v-for="user in userStore.users" :key="user.id" :value="user.id">
+                                            {{ user.name }}
+                                        </option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select
+                                        :value="issue.engineer?.id ?? ''"
+                                        @change="updateIssue(issue, { engineer_id: normalizeNullableId($event.target.value) })"
+                                    >
+                                        <option value="">未割当</option>
+                                        <option v-for="engineer in engineerStore.engineers" :key="engineer.id" :value="engineer.id">
+                                            {{ engineer.name }}
+                                        </option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select :value="issue.status" @change="updateStatus(issue, $event.target.value)">
+                                        <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button
+                                        :class="['btn', issue.is_managed ? 'btn-secondary' : 'btn-primary']"
+                                        type="button"
+                                        @click="toggleManaged(issue)"
+                                    >
+                                        {{ issue.is_managed ? '表示中' : '追加' }}
+                                    </button>
+                                </td>
+                                <td>
+                                    <input
+                                        :value="issue.schedule?.planned_start ?? ''"
+                                        type="date"
+                                        @change="updateSchedule(issue, { planned_start: emptyToNull($event.target.value) })"
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        :value="issue.schedule?.planned_end ?? ''"
+                                        type="date"
+                                        @change="updateSchedule(issue, { planned_end: emptyToNull($event.target.value) })"
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        :value="issue.schedule?.actual_start ?? ''"
+                                        type="date"
+                                        @change="updateSchedule(issue, { actual_start: emptyToNull($event.target.value) })"
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        :value="issue.schedule?.actual_end ?? ''"
+                                        type="date"
+                                        @change="updateSchedule(issue, { actual_end: emptyToNull($event.target.value) })"
+                                    >
+                                </td>
+                                <td>
+                                    <div class="issue-flags">
+                                        <span v-if="issue.is_overdue" class="flag flag-danger">期日超過</span>
+                                        <span v-if="issue.is_due_soon" class="flag flag-warning">期日間近</span>
+                                        <span v-if="!issue.is_overdue && !issue.is_due_soon" class="issue-muted">-</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
         </div>
     </section>
 </template>
@@ -249,13 +389,20 @@ const engineerStore = useEngineerStore();
 const userStore = useUserStore();
 const errorMessage = ref('');
 const successMessage = ref('');
+const openFilterMenu = ref('');
+const isMainFiltersOpen = ref(true);
+const isDateFiltersOpen = ref(false);
 let successMessageTimer = null;
+const flagOptions = [
+    { value: 'overdue', label: '期限超過' },
+    { value: 'due_soon', label: '期限近い' },
+];
 
 const filters = reactive({
     product_id: [],
     engineer_id: [],
     director_id: [],
-    status: [],
+    status: defaultStatuses(),
     mode: 'all',
     planned_start_from: '',
     planned_start_to: '',
@@ -267,6 +414,7 @@ const filters = reactive({
     actual_end_to: '',
     flags: [],
 });
+const draftFilters = reactive(defaultFilters());
 const sortState = reactive({
     key: 'default',
     direction: 'asc',
@@ -316,6 +464,7 @@ const sortedIssues = computed(() => {
         return defaultIssueCompare(a, b);
     });
 });
+const visibleIssueCount = computed(() => issueStore.issues.length);
 const hasActiveFilters = computed(() => Object.keys(filterParams()).length > 0);
 const emptyStateMessage = computed(() => (
     hasActiveFilters.value
@@ -385,7 +534,9 @@ function filterParams() {
 }
 
 async function resetFilters() {
+    closeFilterMenu();
     applyFilters(defaultFilters());
+    applyDraftFiltersOnly(defaultFilters());
     saveFilters();
     await fetchIssues();
 }
@@ -395,7 +546,7 @@ function defaultFilters() {
         product_id: [],
         engineer_id: [],
         director_id: [],
-        status: [],
+        status: defaultStatuses(),
         mode: 'all',
         planned_start_from: '',
         planned_start_to: '',
@@ -409,6 +560,10 @@ function defaultFilters() {
     };
 }
 
+function defaultStatuses() {
+    return statuses.filter((status) => status !== '完了');
+}
+
 function restoreFilters() {
     try {
         const savedFilters = JSON.parse(window.localStorage.getItem(filterStorageKey) ?? 'null');
@@ -419,6 +574,8 @@ function restoreFilters() {
     } catch {
         applyFilters(defaultFilters());
     }
+
+    applyDraftFiltersOnly(filterSnapshot());
 }
 
 function saveFilters() {
@@ -441,22 +598,30 @@ function saveFilters() {
 }
 
 function applyFilters(nextFilters) {
-    filters.product_id = normalizeFilterArray(nextFilters.product_id);
-    filters.engineer_id = normalizeFilterArray(nextFilters.engineer_id);
-    filters.director_id = normalizeFilterArray(nextFilters.director_id);
-    filters.status = normalizeFilterArray(nextFilters.status).filter((status) => statuses.includes(status));
-    filters.mode = 'all';
+    assignFilters(filters, nextFilters);
+}
+
+function applyDraftFiltersOnly(nextFilters) {
+    assignFilters(draftFilters, nextFilters);
+}
+
+function assignFilters(target, nextFilters) {
+    target.product_id = normalizeFilterArray(nextFilters.product_id);
+    target.engineer_id = normalizeFilterArray(nextFilters.engineer_id);
+    target.director_id = normalizeFilterArray(nextFilters.director_id);
+    target.status = normalizeFilterArray(nextFilters.status).filter((status) => statuses.includes(status));
+    target.mode = 'all';
 
     if (nextFilters.mode === '' || nextFilters.mode === 'all') {
-        filters.mode = 'all';
+        target.mode = 'all';
     }
 
     if (nextFilters.mode === 'managed') {
-        filters.mode = 'managed';
+        target.mode = 'managed';
     }
 
     if (nextFilters.mode === 'unmanaged' || nextFilters.mode === 'unmanaged_imports') {
-        filters.mode = 'unmanaged_imports';
+        target.mode = 'unmanaged_imports';
     }
 
     const dateKeys = [
@@ -467,10 +632,47 @@ function applyFilters(nextFilters) {
     ];
     for (const key of dateKeys) {
         const v = nextFilters[key];
-        filters[key] = (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : '';
+        target[key] = (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : '';
     }
 
-    filters.flags = normalizeFilterArray(nextFilters.flags).filter((f) => ['overdue', 'due_soon'].includes(f));
+    target.flags = normalizeFilterArray(nextFilters.flags).filter((f) => ['overdue', 'due_soon'].includes(f));
+}
+
+function filterSnapshot(source = filters) {
+    return {
+        product_id: [...source.product_id],
+        engineer_id: [...source.engineer_id],
+        director_id: [...source.director_id],
+        status: [...source.status],
+        mode: source.mode,
+        planned_start_from: source.planned_start_from,
+        planned_start_to: source.planned_start_to,
+        planned_end_from: source.planned_end_from,
+        planned_end_to: source.planned_end_to,
+        actual_start_from: source.actual_start_from,
+        actual_start_to: source.actual_start_to,
+        actual_end_from: source.actual_end_from,
+        actual_end_to: source.actual_end_to,
+        flags: [...source.flags],
+    };
+}
+
+function toggleFilterMenu(key) {
+    openFilterMenu.value = openFilterMenu.value === key ? '' : key;
+}
+
+function closeFilterMenu() {
+    openFilterMenu.value = '';
+}
+
+function clearDraftSelection(key) {
+    draftFilters[key] = [];
+}
+
+async function applyDraftFilters() {
+    closeFilterMenu();
+    applyFilters(filterSnapshot(draftFilters));
+    await fetchIssues();
 }
 
 function normalizeFilterArray(value) {
@@ -479,6 +681,56 @@ function normalizeFilterArray(value) {
     }
 
     return value.map((item) => String(item)).filter((item) => item !== '');
+}
+
+function toggleDraftSelection(key, value) {
+    const selected = draftFilters[key];
+    const index = selected.indexOf(value);
+
+    if (index === -1) {
+        selected.push(value);
+        return;
+    }
+
+    selected.splice(index, 1);
+}
+
+function selectedOptionLabel(selectedIds, options) {
+    if (selectedIds.length === 0 || selectedIds.length === options.length) {
+        return 'すべて';
+    }
+
+    return selectedIds.map((id) => (
+        options.find((option) => String(option.id) === String(id))?.name ?? `ID:${id}`
+    )).join('、');
+}
+
+function selectedStatusLabel(selectedStatuses) {
+    if (selectedStatuses.length === 0 || selectedStatuses.length === statuses.length) {
+        return 'すべて';
+    }
+
+    return selectedStatuses.join('、');
+}
+
+function selectedFlagLabel(selectedFlags) {
+    if (selectedFlags.length === 0 || selectedFlags.length === flagOptions.length) {
+        return 'すべて';
+    }
+
+    return selectedFlags.map(flagLabel).join('、');
+}
+
+function flagLabel(flag) {
+    if (flag === 'overdue') {
+        return '期限超過';
+    }
+
+    if (flag === 'due_soon') {
+        return '期限近い';
+    }
+
+    return flag;
 }
 
 function toggleSort(key) {
