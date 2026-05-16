@@ -49,7 +49,7 @@
 
 | メソッド | パス | 概要 |
 |---|---|---|
-| GET | `/api/v1/issues` | 一覧（クエリ: product_id, engineer_id, director_id, status, is_managed, unmanaged_imports, planned_start_from/to, planned_end_from/to, actual_start_from/to, actual_end_from/to, flags[]。未指定時は管理対象/未管理を含むすべて） |
+| GET | `/api/v1/issues` | 一覧（クエリ: product_id, engineer_id, director_id, status, is_managed, unmanaged_imports, planned_start_from/to, planned_end_from/to, actual_start_from/to, actual_end_from/to, flags[]。API未指定時は管理対象/未管理・完了を含むすべて） |
 | GET | `/api/v1/issues/{id}` | 詳細（schedule・group含む） |
 | PUT | `/api/v1/issues/{id}` | ツール管理項目の更新（director_id, engineer_id, status, is_managed, group_id） |
 | PATCH | `/api/v1/issues/{id}/status` | ステータスのみ更新（管理表インライン変更用） |
@@ -96,7 +96,7 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
 }
 ```
 
-`github_issue_number` / `github_state` / `github_synced_at` はGitHubから取り込まれたISSUEで必須。管理表フィルターは画面上で「すべて」を初期値とし、「表示中のみ」は `is_managed=true`、「未追加のみ」は `unmanaged_imports=true` を送る。`unmanaged_imports=true` クエリは「`is_managed=false` かつ `github_issue_number IS NOT NULL`」の絞り込みで、未追加リストパネルが利用する。
+`github_issue_number` / `github_state` / `github_synced_at` はGitHubから取り込まれたISSUEで必須。ISSUE一覧画面のステータスフィルターは完了以外（`status[]=未着手&status[]=作業中&status[]=テスト中&status[]=保留`）を初期値とし、完了したISSUEはステータス条件を変更して参照する。管理表フィルターは画面上で「すべて」を初期値とし、「表示中のみ」は `is_managed=true`、「未追加のみ」は `unmanaged_imports=true` を送る。`unmanaged_imports=true` クエリは「`is_managed=false` かつ `github_issue_number IS NOT NULL`」の絞り込みで、未追加リストパネルが利用する。
 
 **日付フィルタークエリパラメータ（YYYY-MM-DD）**
 

@@ -833,16 +833,8 @@ async function toggleManaged(issue) {
 }
 
 async function updateSchedule(issue, patch) {
-    const schedule = {
-        planned_start: issue.schedule?.planned_start ?? null,
-        planned_end: issue.schedule?.planned_end ?? null,
-        actual_start: issue.schedule?.actual_start ?? null,
-        actual_end: issue.schedule?.actual_end ?? null,
-        ...patch,
-    };
-
     try {
-        await issueStore.updateSchedule(issue.id, schedule);
+        await issueStore.updateSchedule(issue.id, patch);
         showSuccessMessage('スケジュールを更新しました。');
     } catch (error) {
         errorMessage.value = formatError(error, 'スケジュールの更新に失敗しました。');
