@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\IssueStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,8 +11,6 @@ use Illuminate\Support\Carbon;
 
 class Issue extends Model
 {
-    public const STATUSES = ['未着手', '作業中', 'テスト中', '完了', '保留'];
-
     private const EMPTY_FILTER_VALUE = '__empty__';
 
     protected $fillable = [
@@ -20,7 +19,7 @@ class Issue extends Model
         'director_id',
         'engineer_id',
         'product_id',
-        'status',
+        'status_id',
         'is_managed',
         'display_order',
         'github_issue_number',
@@ -32,6 +31,7 @@ class Issue extends Model
     {
         return [
             'is_managed' => 'boolean',
+            'status_id' => 'integer',
             'github_synced_at' => 'datetime',
         ];
     }
@@ -72,7 +72,7 @@ class Issue extends Model
     {
         $schedule ??= $this->schedule;
 
-        if (! $schedule?->planned_end || $schedule->actual_end || $this->status === '完了') {
+        if (! $schedule?->planned_end || $schedule->actual_end || $this->status_id === IssueStatus::Done->value) {
             return false;
         }
 
@@ -83,7 +83,7 @@ class Issue extends Model
     {
         $schedule ??= $this->schedule;
 
-        if (! $schedule?->planned_end || $schedule->actual_end || $this->status === '完了') {
+        if (! $schedule?->planned_end || $schedule->actual_end || $this->status_id === IssueStatus::Done->value) {
             return false;
         }
 
@@ -121,7 +121,7 @@ class Issue extends Model
             ->when($filters['product_id'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyFilterValue($query, 'product_id', $value))
             ->when($filters['engineer_id'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyNullableFilterValue($query, 'engineer_id', $value))
             ->when($filters['director_id'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyNullableFilterValue($query, 'director_id', $value))
-            ->when($filters['status'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyFilterValue($query, 'status', $value))
+            ->when($filters['status_id'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyFilterValue($query, 'status_id', $value))
             ->when(
                 array_filter([
                     $filters['planned_start_from'] ?? null,
@@ -169,19 +169,19 @@ class Issue extends Model
                 return $query->where(function (Builder $q) use ($flags, $today, $dueSoonEnd): void {
                     if (in_array('overdue', $flags, true)) {
                         $q->orWhere(function (Builder $q) use ($today): void {
-                            $q->where('status', '!=', '完了')
+                            $q->where('status_id', '!=', IssueStatus::Done->value)
                                 ->whereHas('schedule', fn ($s) => $s->where('planned_end', '<', $today)->whereNull('actual_end'));
                         });
                     }
                     if (in_array('due_soon', $flags, true)) {
                         $q->orWhere(function (Builder $q) use ($today, $dueSoonEnd): void {
-                            $q->where('status', '!=', '完了')
+                            $q->where('status_id', '!=', IssueStatus::Done->value)
                                 ->whereHas('schedule', fn ($s) => $s->whereBetween('planned_end', [$today, $dueSoonEnd])->whereNull('actual_end'));
                         });
                     }
                     if (in_array('none', $flags, true)) {
                         $q->orWhere(function (Builder $q) use ($dueSoonEnd): void {
-                            $q->where('status', '完了')
+                            $q->where('status_id', IssueStatus::Done->value)
                                 ->orWhereDoesntHave('schedule', fn ($s) => $s->where('planned_end', '<=', $dueSoonEnd)->whereNull('actual_end'));
                         });
                     }

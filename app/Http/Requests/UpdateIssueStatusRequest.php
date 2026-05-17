@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Issue;
+use App\Enums\IssueStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +19,7 @@ class UpdateIssueStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', 'string', Rule::in(Issue::STATUSES)],
+            'status_id' => ['required', 'integer', Rule::in(IssueStatus::values())],
         ];
     }
 }

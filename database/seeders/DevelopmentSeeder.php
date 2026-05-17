@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\IssueStatus;
 use App\Models\Engineer;
 use App\Models\Issue;
 use App\Models\Product;
@@ -69,7 +70,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 101,
                 'director_email' => 'misaki.tanaka@example.com',
                 'engineer_name' => '山田 太郎',
-                'status' => '完了',
+                'status_id' => IssueStatus::Done->value,
                 'product_name' => 'Product A',
                 'display_order' => 1,
                 'schedule' => ['planned_start' => '2026-04-01', 'actual_start' => '2026-04-01', 'planned_end' => '2026-04-10', 'actual_end' => '2026-04-09'],
@@ -79,7 +80,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 102,
                 'director_email' => 'misaki.tanaka@example.com',
                 'engineer_name' => '佐藤 花子',
-                'status' => '完了',
+                'status_id' => IssueStatus::Done->value,
                 'product_name' => 'Product A',
                 'display_order' => 2,
                 'schedule' => ['planned_start' => '2026-04-05', 'actual_start' => '2026-04-06', 'planned_end' => '2026-04-15', 'actual_end' => '2026-04-16'],
@@ -89,7 +90,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 103,
                 'director_email' => 'kenta.nakamura@example.com',
                 'engineer_name' => '山田 太郎',
-                'status' => '作業中',
+                'status_id' => IssueStatus::InProgress->value,
                 'product_name' => 'Product A',
                 'display_order' => 3,
                 'schedule' => ['planned_start' => '2026-04-15', 'actual_start' => '2026-04-15', 'planned_end' => '2026-04-25', 'actual_end' => null],
@@ -99,7 +100,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 104,
                 'director_email' => 'misaki.tanaka@example.com',
                 'engineer_name' => '鈴木 一郎',
-                'status' => 'テスト中',
+                'status_id' => IssueStatus::Testing->value,
                 'product_name' => 'Product A',
                 'display_order' => 4,
                 'schedule' => ['planned_start' => '2026-04-10', 'actual_start' => '2026-04-12', 'planned_end' => '2026-04-22', 'actual_end' => null],
@@ -109,7 +110,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 105,
                 'director_email' => 'kenta.nakamura@example.com',
                 'engineer_name' => '佐藤 花子',
-                'status' => '未着手',
+                'status_id' => IssueStatus::Todo->value,
                 'product_name' => 'Product A',
                 'display_order' => 5,
                 'schedule' => ['planned_start' => '2026-05-01', 'actual_start' => null, 'planned_end' => '2026-05-08', 'actual_end' => null],
@@ -119,7 +120,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 106,
                 'director_email' => 'misaki.tanaka@example.com',
                 'engineer_name' => '山田 太郎',
-                'status' => '保留',
+                'status_id' => IssueStatus::OnHold->value,
                 'product_name' => 'Product A',
                 'display_order' => 6,
                 'schedule' => ['planned_start' => '2026-04-20', 'actual_start' => '2026-04-20', 'planned_end' => '2026-04-27', 'actual_end' => null],
@@ -129,7 +130,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 201,
                 'director_email' => 'kenta.nakamura@example.com',
                 'engineer_name' => '佐藤 花子',
-                'status' => '作業中',
+                'status_id' => IssueStatus::InProgress->value,
                 'product_name' => 'Product B',
                 'display_order' => 1,
                 'schedule' => ['planned_start' => '2026-05-01', 'actual_start' => '2026-05-02', 'planned_end' => '2026-05-20', 'actual_end' => null],
@@ -139,7 +140,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 202,
                 'director_email' => 'kenta.nakamura@example.com',
                 'engineer_name' => '鈴木 一郎',
-                'status' => '未着手',
+                'status_id' => IssueStatus::Todo->value,
                 'product_name' => 'Product B',
                 'display_order' => 2,
                 'schedule' => ['planned_start' => '2026-05-15', 'actual_start' => null, 'planned_end' => '2026-05-30', 'actual_end' => null],
@@ -149,7 +150,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 301,
                 'director_email' => 'misaki.tanaka@example.com',
                 'engineer_name' => '山田 太郎',
-                'status' => '作業中',
+                'status_id' => IssueStatus::InProgress->value,
                 'product_name' => 'Product A',
                 'display_order' => 7,
                 'schedule' => ['planned_start' => '2026-04-20', 'actual_start' => '2026-04-21', 'planned_end' => '2026-04-24', 'actual_end' => null],
@@ -159,7 +160,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 302,
                 'director_email' => 'kenta.nakamura@example.com',
                 'engineer_name' => '鈴木 一郎',
-                'status' => '未着手',
+                'status_id' => IssueStatus::Todo->value,
                 'product_name' => 'Product B',
                 'display_order' => 3,
                 'schedule' => ['planned_start' => '2026-05-10', 'actual_start' => null, 'planned_end' => '2026-05-25', 'actual_end' => null],
@@ -178,20 +179,26 @@ class DevelopmentSeeder extends Seeder
             'ユーザー削除時の確認文言調整',
             'スマートフォン表示のテーブル調整',
         ];
-        $bulkStatuses = ['未着手', '作業中', 'テスト中', '保留', '完了'];
+        $bulkStatusIds = [
+            IssueStatus::Todo->value,
+            IssueStatus::InProgress->value,
+            IssueStatus::Testing->value,
+            IssueStatus::OnHold->value,
+            IssueStatus::Done->value,
+        ];
         $bulkEngineers = ['山田 太郎', '佐藤 花子', '鈴木 一郎'];
         $bulkDirectors = ['misaki.tanaka@example.com', 'kenta.nakamura@example.com'];
         $bulkProducts = ['Product A', 'Product B'];
 
         for ($index = 0; $index < 40; $index++) {
-            $status = $bulkStatuses[$index % count($bulkStatuses)];
+            $statusId = $bulkStatusIds[$index % count($bulkStatusIds)];
             $productName = $bulkProducts[$index % count($bulkProducts)];
             $plannedDay = ($index % 24) + 1;
             $plannedEndDay = min($plannedDay + 5, 28);
-            $actualStart = in_array($status, ['作業中', 'テスト中', '完了'], true)
+            $actualStart = in_array($statusId, [IssueStatus::InProgress->value, IssueStatus::Testing->value, IssueStatus::Done->value], true)
                 ? sprintf('2026-06-%02d', min($plannedDay + 1, 28))
                 : null;
-            $actualEnd = $status === '完了'
+            $actualEnd = $statusId === IssueStatus::Done->value
                 ? sprintf('2026-06-%02d', min($plannedEndDay + 1, 28))
                 : null;
 
@@ -200,7 +207,7 @@ class DevelopmentSeeder extends Seeder
                 'github_issue_number' => 400 + $index + 1,
                 'director_email' => $bulkDirectors[$index % count($bulkDirectors)],
                 'engineer_name' => $bulkEngineers[$index % count($bulkEngineers)],
-                'status' => $status,
+                'status_id' => $statusId,
                 'product_name' => $productName,
                 'display_order' => 20 + $index,
                 'is_managed' => $index % 6 !== 0,
@@ -225,10 +232,10 @@ class DevelopmentSeeder extends Seeder
                     'github_url' => sprintf('https://github.com/example/repo/issues/%d', $issueData['github_issue_number']),
                     'director_id' => $directorByEmail[$issueData['director_email']],
                     'engineer_id' => $engineerByName[$issueData['engineer_name']],
-                    'status' => $issueData['status'],
+                    'status_id' => $issueData['status_id'],
                     'is_managed' => $issueData['is_managed'] ?? true,
                     'display_order' => $issueData['display_order'],
-                    'github_state' => $issueData['status'] === '完了' ? 'closed' : 'open',
+                    'github_state' => $issueData['status_id'] === IssueStatus::Done->value ? 'closed' : 'open',
                     'github_synced_at' => now(),
                 ],
             );

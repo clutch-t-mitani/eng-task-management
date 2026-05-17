@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Issue;
+use App\Enums\IssueStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,7 +17,7 @@ class IssueIndexRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        foreach (['product_id', 'engineer_id', 'director_id', 'status'] as $key) {
+        foreach (['product_id', 'engineer_id', 'director_id', 'status_id'] as $key) {
             if (! $this->has($key)) {
                 continue;
             }
@@ -87,8 +87,8 @@ class IssueIndexRequest extends FormRequest
                     }
                 },
             ],
-            'status' => ['nullable', 'array'],
-            'status.*' => ['string', Rule::in(Issue::STATUSES)],
+            'status_id' => ['nullable', 'array'],
+            'status_id.*' => ['integer', Rule::in(IssueStatus::values())],
             'is_managed' => ['nullable', 'boolean'],
             'unmanaged_imports' => ['nullable', 'boolean'],
             'planned_start_from' => ['nullable', 'date_format:Y-m-d'],

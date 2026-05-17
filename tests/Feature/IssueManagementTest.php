@@ -29,7 +29,7 @@ class IssueManagementTest extends TestCase
         $this->getJson('/api/v1/issues')->assertUnauthorized();
         $this->getJson("/api/v1/issues/{$issue->id}")->assertUnauthorized();
         $this->putJson("/api/v1/issues/{$issue->id}", [])->assertUnauthorized();
-        $this->patchJson("/api/v1/issues/{$issue->id}/status", ['status' => '作業中'])->assertUnauthorized();
+        $this->patchJson("/api/v1/issues/{$issue->id}/status", ['status_id' => 2])->assertUnauthorized();
         $this->putJson("/api/v1/issues/{$issue->id}/schedule", [])->assertUnauthorized();
     }
 
@@ -46,7 +46,7 @@ class IssueManagementTest extends TestCase
             'product_id' => $product->id,
             'engineer_id' => $engineer->id,
             'director_id' => $director->id,
-            'status' => '作業中',
+            'status_id' => 2,
             'display_order' => 2,
         ]);
         $target->schedule()->create([
@@ -54,17 +54,20 @@ class IssueManagementTest extends TestCase
         ]);
         $this->createIssue([
             'product_id' => $otherProduct->id,
-            'status' => '未着手',
+            'status_id' => 1,
             'github_issue_number' => 102,
         ]);
 
-        $this->actingAs($actor)->getJson('/api/v1/issues?product_id='.$product->id.'&status=作業中')
+        $this->actingAs($actor)->getJson('/api/v1/issues?product_id='.$product->id.'&status_id=2')
             ->assertOk()
             ->assertJsonCount(1)
             ->assertJsonPath('0.id', $target->id)
             ->assertJsonPath('0.director.name', '田中 美咲')
             ->assertJsonPath('0.engineer.name', '山田 太郎')
             ->assertJsonPath('0.schedule.planned_end', '2026-05-08')
+            ->assertJsonPath('0.status_id', 2)
+            ->assertJsonPath('0.status_label', '作業中')
+            ->assertJsonMissingPath('0.status')
             ->assertJsonMissingPath('0.schedule.planned_hours')
             ->assertJsonMissingPath('0.schedule.actual_hours')
             ->assertJsonPath('0.is_overdue', false)
@@ -90,21 +93,21 @@ class IssueManagementTest extends TestCase
             'product_id' => $product->id,
             'engineer_id' => $engineer->id,
             'director_id' => $director->id,
-            'status' => '作業中',
+            'status_id' => 2,
             'github_issue_number' => 201,
         ]);
         $testing = $this->createIssue([
             'product_id' => $otherProduct->id,
             'engineer_id' => $otherEngineer->id,
             'director_id' => $otherDirector->id,
-            'status' => 'テスト中',
+            'status_id' => 3,
             'github_issue_number' => 202,
         ]);
         $this->createIssue([
             'product_id' => $product->id,
             'engineer_id' => $engineer->id,
             'director_id' => $director->id,
-            'status' => '完了',
+            'status_id' => 4,
             'github_issue_number' => 203,
         ]);
 
@@ -112,7 +115,7 @@ class IssueManagementTest extends TestCase
             'product_id' => [$product->id, $otherProduct->id],
             'engineer_id' => [$engineer->id, $otherEngineer->id],
             'director_id' => [$director->id, $otherDirector->id],
-            'status' => ['作業中', 'テスト中'],
+            'status_id' => [2, 3],
         ]))
             ->assertOk()
             ->assertJsonCount(2)
@@ -124,10 +127,10 @@ class IssueManagementTest extends TestCase
     {
         $actor = User::factory()->create();
 
-        $working = $this->createIssue(['status' => '作業中', 'github_issue_number' => 201]);
-        $this->createIssue(['status' => 'テスト中', 'github_issue_number' => 202]);
+        $working = $this->createIssue(['status_id' => 2, 'github_issue_number' => 201]);
+        $this->createIssue(['status_id' => 3, 'github_issue_number' => 202]);
 
-        $this->actingAs($actor)->getJson('/api/v1/issues?status=作業中')
+        $this->actingAs($actor)->getJson('/api/v1/issues?status_id=2')
             ->assertOk()
             ->assertJsonCount(1)
             ->assertJsonPath('0.id', $working->id);
@@ -175,10 +178,10 @@ class IssueManagementTest extends TestCase
         $actor = User::factory()->create();
 
         $this->actingAs($actor)->getJson('/api/v1/issues?'.http_build_query([
-            'status' => ['作業中', 'レビュー中'],
+            'status_id' => [2, 999],
         ]))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['status.1']);
+            ->assertJsonValidationErrors(['status_id.1']);
     }
 
     public function test_can_update_management_fields_without_overwriting_github_fields(): void
@@ -200,12 +203,12 @@ class IssueManagementTest extends TestCase
             'github_state' => 'closed',
             'director_id' => $director->id,
             'engineer_id' => $engineer->id,
-            'status' => 'テスト中',
+            'status_id' => 3,
             'is_managed' => true,
         ])->assertOk()
             ->assertJsonPath('director.id', $director->id)
             ->assertJsonPath('engineer.id', $engineer->id)
-            ->assertJsonPath('status', 'テスト中')
+            ->assertJsonPath('status_id', 3)->assertJsonPath('status_label', 'テスト中')
             ->assertJsonPath('is_managed', true)
             ->assertJsonPath('title', 'GitHub由来タイトル')
             ->assertJsonPath('github_url', 'https://github.com/example/repo/issues/101')
@@ -217,7 +220,7 @@ class IssueManagementTest extends TestCase
             'title' => 'GitHub由来タイトル',
             'director_id' => $director->id,
             'engineer_id' => $engineer->id,
-            'status' => 'テスト中',
+            'status_id' => 3,
             'is_managed' => true,
         ]);
     }
@@ -228,9 +231,9 @@ class IssueManagementTest extends TestCase
         $issue = $this->createIssue(['is_managed' => false]);
 
         $this->actingAs($actor)->patchJson("/api/v1/issues/{$issue->id}/status", [
-            'status' => '作業中',
+            'status_id' => 2,
         ])->assertOk()
-            ->assertJsonPath('status', '作業中');
+            ->assertJsonPath('status_id', 2)->assertJsonPath('status_label', '作業中');
 
         $this->actingAs($actor)->patchJson("/api/v1/issues/{$issue->id}/managed")
             ->assertOk()
@@ -302,15 +305,15 @@ class IssueManagementTest extends TestCase
         $issue = $this->createIssue();
 
         $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}", [
-            'status' => 'レビュー中',
+            'status_id' => 999,
             'director_id' => 999999,
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['status', 'director_id']);
+            ->assertJsonValidationErrors(['status_id', 'director_id']);
 
         $this->actingAs($actor)->patchJson("/api/v1/issues/{$issue->id}/status", [
-            'status' => 'レビュー中',
+            'status_id' => 999,
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['status']);
+            ->assertJsonValidationErrors(['status_id']);
 
         $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
             'planned_end' => '2026/05/10',
@@ -422,16 +425,16 @@ class IssueManagementTest extends TestCase
         $actor = User::factory()->create();
         $product = Product::query()->create(['name' => 'Product A', 'display_order' => 1]);
 
-        $overdue = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 401]);
+        $overdue = $this->createIssue(['product_id' => $product->id, 'status_id' => 2, 'github_issue_number' => 401]);
         $overdue->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
 
-        $dueSoon = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 402]);
+        $dueSoon = $this->createIssue(['product_id' => $product->id, 'status_id' => 2, 'github_issue_number' => 402]);
         $dueSoon->schedule()->create(['planned_end' => '2026-05-12', 'actual_end' => null]);
 
-        $normal = $this->createIssue(['product_id' => $product->id, 'status' => '未着手', 'github_issue_number' => 403]);
+        $normal = $this->createIssue(['product_id' => $product->id, 'status_id' => 1, 'github_issue_number' => 403]);
         $normal->schedule()->create(['planned_end' => '2026-06-01', 'actual_end' => null]);
 
-        $done = $this->createIssue(['product_id' => $product->id, 'status' => '完了', 'github_issue_number' => 404]);
+        $done = $this->createIssue(['product_id' => $product->id, 'status_id' => 4, 'github_issue_number' => 404]);
         $done->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
 
         $this->actingAs($actor)->getJson('/api/v1/issues?flags[]=overdue')
@@ -451,13 +454,13 @@ class IssueManagementTest extends TestCase
         $actor = User::factory()->create();
         $product = Product::query()->create(['name' => 'Product A', 'display_order' => 1]);
 
-        $overdue = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 501]);
+        $overdue = $this->createIssue(['product_id' => $product->id, 'status_id' => 2, 'github_issue_number' => 501]);
         $overdue->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
 
-        $dueSoon = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 502]);
+        $dueSoon = $this->createIssue(['product_id' => $product->id, 'status_id' => 2, 'github_issue_number' => 502]);
         $dueSoon->schedule()->create(['planned_end' => '2026-05-12', 'actual_end' => null]);
 
-        $normal = $this->createIssue(['product_id' => $product->id, 'status' => '未着手', 'github_issue_number' => 503]);
+        $normal = $this->createIssue(['product_id' => $product->id, 'status_id' => 1, 'github_issue_number' => 503]);
         $normal->schedule()->create(['planned_end' => '2026-06-01', 'actual_end' => null]);
 
         $this->actingAs($actor)->getJson('/api/v1/issues?'.http_build_query(['flags' => ['overdue', 'due_soon']]))
@@ -471,16 +474,16 @@ class IssueManagementTest extends TestCase
         $actor = User::factory()->create();
         $product = Product::query()->create(['name' => 'Product A', 'display_order' => 1]);
 
-        $normal = $this->createIssue(['product_id' => $product->id, 'status' => '未着手', 'github_issue_number' => 511]);
+        $normal = $this->createIssue(['product_id' => $product->id, 'status_id' => 1, 'github_issue_number' => 511]);
         $normal->schedule()->create(['planned_end' => '2026-06-01', 'actual_end' => null]);
 
-        $done = $this->createIssue(['product_id' => $product->id, 'status' => '完了', 'github_issue_number' => 512]);
+        $done = $this->createIssue(['product_id' => $product->id, 'status_id' => 4, 'github_issue_number' => 512]);
         $done->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
 
-        $overdue = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 513]);
+        $overdue = $this->createIssue(['product_id' => $product->id, 'status_id' => 2, 'github_issue_number' => 513]);
         $overdue->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
 
-        $dueSoon = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 514]);
+        $dueSoon = $this->createIssue(['product_id' => $product->id, 'status_id' => 2, 'github_issue_number' => 514]);
         $dueSoon->schedule()->create(['planned_end' => '2026-05-12', 'actual_end' => null]);
 
         $this->actingAs($actor)->getJson('/api/v1/issues?flags[]=none')
@@ -557,7 +560,7 @@ class IssueManagementTest extends TestCase
             'director_id' => null,
             'engineer_id' => null,
             'product_id' => $productId,
-            'status' => '未着手',
+            'status_id' => 1,
             'is_managed' => true,
             'display_order' => 1,
             'github_issue_number' => 101,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\IssueStatus;
 use App\Models\Engineer;
 use App\Models\Issue;
 use App\Models\IssueSchedule;
@@ -31,7 +32,8 @@ class IssueResource extends JsonResource
             'github_issue_number' => $this->github_issue_number,
             'github_state' => $this->github_state,
             'github_synced_at' => $this->github_synced_at?->toJSON(),
-            'status' => $this->status,
+            'status_id' => $this->status_id,
+            'status_label' => IssueStatus::tryFrom((int) $this->status_id)?->label(),
             'is_managed' => $this->is_managed,
             'display_order' => $this->display_order,
             'product_id' => $this->product_id,

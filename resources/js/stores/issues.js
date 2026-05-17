@@ -26,21 +26,21 @@ export const useIssueStore = defineStore('issues', {
             return data;
         },
 
-        async updateStatus(id, status) {
+        async updateStatus(id, statusId) {
             const previous = this.issues.find((issue) => issue.id === id);
-            const previousStatus = previous?.status;
+            const previousStatusId = previous?.status_id;
 
             if (previous) {
-                previous.status = status;
+                previous.status_id = statusId;
             }
 
             try {
-                const { data } = await axios.patch(`/api/v1/issues/${id}/status`, { status });
+                const { data } = await axios.patch(`/api/v1/issues/${id}/status`, { status_id: statusId });
                 this.replaceIssue(data);
                 return data;
             } catch (error) {
-                if (previous && previousStatus !== undefined) {
-                    previous.status = previousStatus;
+                if (previous && previousStatusId !== undefined) {
+                    previous.status_id = previousStatusId;
                 }
 
                 throw error;

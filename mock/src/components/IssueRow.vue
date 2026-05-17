@@ -7,8 +7,8 @@
     <div class="col-member">{{ director?.name ?? '—' }}</div>
     <div class="col-member">{{ engineer?.name ?? '—' }}</div>
     <div class="col-status">
-      <select class="status-select" :value="issue.status" @change="$emit('update-status', $event.target.value)">
-        <option v-for="s in statuses" :key="s">{{ s }}</option>
+      <select class="status-select" :value="issue.status_id" @change="$emit('update-status', Number($event.target.value))">
+        <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.label }}</option>
       </select>
     </div>
     <div class="col-date" :class="{ 'date-overdue': overdue, 'date-soon': soon }">{{ schedule?.planned_start ?? '—' }}</div>
@@ -33,7 +33,7 @@ const soon = computed(() => isDueSoon(schedule.value))
 const rowClass = computed(() => ({
   'row-overdue': overdue.value,
   'row-soon': soon.value,
-  'row-done': props.issue.status === '完了',
+  'row-done': props.issue.status_id === 4,
 }))
 </script>
 

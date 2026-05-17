@@ -114,12 +114,12 @@ import { issues as rawIssues, groups as rawGroups, products, members } from '../
 const localIssues = ref([...rawIssues])
 const localGroups = ref([...rawGroups])
 
-const filters = reactive({ product_id: null, member_id: null, status: '' })
+const filters = reactive({ product_id: null, member_id: null, status_id: '' })
 const showAddIssue = ref(false)
 
 const newIssue = reactive({
   title: '', github_url: '', director_id: null, engineer_id: null,
-  product_id: 1, group_id: null, is_managed: true, status: '未着手',
+  product_id: 1, group_id: null, is_managed: true, status_id: 1,
 })
 
 const engineers = computed(() => members.filter(m => m.role === 'engineer'))
@@ -138,15 +138,15 @@ const filteredUngrouped = computed(() =>
 function applyFilter(issue) {
   if (filters.product_id && issue.product_id !== filters.product_id) return false
   if (filters.member_id && issue.engineer_id !== filters.member_id && issue.director_id !== filters.member_id) return false
-  if (filters.status && issue.status !== filters.status) return false
+  if (filters.status_id && issue.status_id !== Number(filters.status_id)) return false
   return true
 }
 
 function onFilterChange(f) { Object.assign(filters, f) }
 
-function updateStatus(issueId, status) {
+function updateStatus(issueId, statusId) {
   const issue = localIssues.value.find(i => i.id === issueId)
-  if (issue) issue.status = status
+  if (issue) issue.status_id = statusId
 }
 
 let nextId = rawIssues.length + 1
@@ -155,7 +155,7 @@ function submitIssue() {
   localIssues.value.push({
     id: nextId++, title: newIssue.title, github_url: newIssue.github_url,
     director_id: newIssue.director_id, engineer_id: newIssue.engineer_id,
-    status: '未着手', product_id: newIssue.product_id,
+    status_id: 1, product_id: newIssue.product_id,
     is_managed: newIssue.is_managed, group_id: newIssue.group_id, display_order: 999,
   })
   newIssue.title = ''

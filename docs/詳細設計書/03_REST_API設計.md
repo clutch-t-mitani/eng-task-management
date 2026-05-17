@@ -49,9 +49,9 @@
 
 | メソッド | パス | 概要 |
 |---|---|---|
-| GET | `/api/v1/issues` | 一覧（クエリ: product_id, engineer_id, director_id, status, is_managed, unmanaged_imports, planned_start_from/to, planned_end_from/to, actual_start_from/to, actual_end_from/to, flags[]。API未指定時は管理対象/未管理・完了を含むすべて） |
+| GET | `/api/v1/issues` | 一覧（クエリ: product_id, engineer_id, director_id, status_id, is_managed, unmanaged_imports, planned_start_from/to, planned_end_from/to, actual_start_from/to, actual_end_from/to, flags[]。API未指定時は管理対象/未管理・完了を含むすべて） |
 | GET | `/api/v1/issues/{id}` | 詳細（director・engineer・schedule含む） |
-| PUT | `/api/v1/issues/{id}` | ツール管理項目の更新（director_id, engineer_id, status, is_managed） |
+| PUT | `/api/v1/issues/{id}` | ツール管理項目の更新（director_id, engineer_id, status_id, is_managed） |
 | PATCH | `/api/v1/issues/{id}/status` | ステータスのみ更新（管理表インライン変更用） |
 | PATCH | `/api/v1/issues/{id}/managed` | is_managed フラグ切り替え |
 | DELETE | `/api/v1/issues/{id}` | ツール上の管理対象から除外（GitHub Issue本体は削除しない） |
@@ -64,7 +64,7 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
 {
   "director_id": 4,
   "engineer_id": 1,
-  "status": "作業中",
+  "status_id": 2,
   "is_managed": true
 }
 ```
@@ -78,7 +78,8 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
   "github_issue_number": 101,
   "github_state": "open",
   "github_synced_at": "2026-05-04T10:00:00Z",
-  "status": "作業中",
+  "status_id": 2,
+  "status_label": "作業中",
   "is_managed": true,
   "product_id": 1,
   "director": { "id": 4, "name": "田中 美咲" },
@@ -94,9 +95,9 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
 }
 ```
 
-`github_issue_number` / `github_state` / `github_synced_at` はGitHubから取り込まれたISSUEで必須。ISSUE一覧画面のステータスフィルターは完了以外（`status[]=未着手&status[]=作業中&status[]=テスト中&status[]=保留`）を初期値とし、完了したISSUEはステータス条件を変更して参照する。管理表フィルターは画面上で「すべて」を初期値とし、「表示中のみ」は `is_managed=true`、「未追加のみ」は `unmanaged_imports=true` を送る。`unmanaged_imports=true` クエリは「`is_managed=false` かつ `github_issue_number IS NOT NULL`」の絞り込みで、未追加リストパネルが利用する。
+`github_issue_number` / `github_state` / `github_synced_at` はGitHubから取り込まれたISSUEで必須。ISSUE一覧画面のステータスフィルターは完了以外（`status_id[]=1&status_id[]=2&status_id[]=3&status_id[]=5`）を初期値とし、完了したISSUEはステータス条件を変更して参照する。管理表フィルターは画面上で「すべて」を初期値とし、「表示中のみ」は `is_managed=true`、「未追加のみ」は `unmanaged_imports=true` を送る。`unmanaged_imports=true` クエリは「`is_managed=false` かつ `github_issue_number IS NOT NULL`」の絞り込みで、未追加リストパネルが利用する。
 
-`product_id` / `engineer_id` / `director_id` / `status` は単一値と配列指定の両方を受け付ける。`engineer_id` / `director_id` では `__empty__` を未割当（NULL）指定として扱い、通常のID指定と組み合わせた場合は OR 条件で絞り込む。
+`product_id` / `engineer_id` / `director_id` / `status_id` は単一値と配列指定の両方を受け付ける。`engineer_id` / `director_id` では `__empty__` を未割当（NULL）指定として扱い、通常のID指定と組み合わせた場合は OR 条件で絞り込む。
 
 **日付フィルタークエリパラメータ（YYYY-MM-DD）**
 
@@ -112,9 +113,9 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
 | `actual_end_to` | 実績終了日 ≤ 指定日 |
 | `flags[]` | `overdue`（期限超過）・`due_soon`（期限近い）・`none`（フラグなし）の配列。複数指定時はOR結合 |
 
-- `flags[]=overdue`: `planned_end < today AND actual_end IS NULL AND status ≠ 完了`
-- `flags[]=due_soon`: `planned_end` が today〜today+3 AND `actual_end IS NULL` AND `status ≠ 完了`
-- `flags[]=none`: `status = 完了` または `planned_end <= today+3 AND actual_end IS NULL` に該当するスケジュールが存在しないISSUE
+- `flags[]=overdue`: `planned_end < today AND actual_end IS NULL AND status_id ≠ 4`
+- `flags[]=due_soon`: `planned_end` が today〜today+3 AND `actual_end IS NULL` AND `status_id ≠ 4`
+- `flags[]=none`: `status_id = 4` または `planned_end <= today+3 AND actual_end IS NULL` に該当するスケジュールが存在しないISSUE
 
 日付範囲は `*_to` が対応する `*_from` 以降であることをバリデーションする。不正な日付形式、存在しない担当者ID、許可外の `flags[]` は `422` を返す。
 
@@ -231,7 +232,7 @@ Webhookレスポンス:
 3. `issue.pull_request` が存在する場合はPRとしてスキップ
 4. payloadの `repository.owner.login` / `repository.name` から `product_repositories` を検索。未登録なら `product_id=NULL`, `SyncLog.status='skipped'` のログを残し `202`
 5. `(product_id, issue.number)` でUpsert
-   - 新規: `is_managed=false`, `status='未着手'`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` 同プロダクト最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
+   - 新規: `is_managed=false`, `status_id=1`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` 同プロダクト最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
    - 既存: `title` / `github_state` / `github_url` / `github_synced_at` のみ更新。他のツール独自項目は触らない
 6. `product_repositories.last_synced_at` / `last_sync_status` を更新し、`SyncLog` に `trigger='webhook'` と `github_delivery_id` を保存
 
@@ -240,7 +241,7 @@ Webhookレスポンス:
 2. `GET https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=100&page=N` をページング取得（`Authorization: Bearer {PAT}`、`X-GitHub-Api-Version: 2022-11-28`）
 3. 各要素について `pull_request` キーがあればスキップ（PR除外）
 4. `(product_id, github_issue_number)` でUpsert
-   - 新規: `is_managed=false`, `status='未着手'`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` 同プロダクト最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
+   - 新規: `is_managed=false`, `status_id=1`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` 同プロダクト最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
    - 既存: `title` / `github_state` / `github_url` / `github_synced_at` のみ更新。他のツール独自項目は触らない
 5. `403`+`X-RateLimit-Remaining: 0` または `429` 検出時は `status='partial'`、`error_message` にリセット時刻を記録して打ち切り
 6. `401` / `404` / 5xx は `status='failed'`、`error_message` にレスポンスbodyを記録して打ち切り
@@ -257,7 +258,7 @@ Webhookレスポンス:
 - `product_id`: プロダクト絞り込み
 - `engineer_id`: 担当エンジニア絞り込み
 - `director_id`: 担当ディレクター絞り込み
-- `status`: ステータス絞り込み
+- `status_id`: ステータスID絞り込み
 
 `/api/v1/table` は常に `is_managed=true` のISSUEのみ返す。GitHubから取り込まれた未追加ISSUEは `/api/v1/issues?unmanaged_imports=true` で取得する。
 
@@ -274,7 +275,8 @@ Webhookレスポンス:
         {
           "id": 1,
           "title": "ログイン画面のバリデーション修正",
-          "status": "完了",
+          "status_id": 4,
+          "status_label": "完了",
           "is_managed": true,
           "director": { "id": 4, "name": "田中 美咲" },
           "engineer": { "id": 1, "name": "山田 太郎" },
@@ -311,11 +313,11 @@ Webhookレスポンス:
       "total_issues": 4,
       "done_count": 1,
       "status_breakdown": {
-        "未着手": 1, "作業中": 2, "テスト中": 0, "完了": 1, "保留": 0
+        "1": 1, "2": 2, "3": 0, "4": 1, "5": 0
       },
       "overdue_count": 1,
       "recent_issues": [
-        { "id": 3, "title": "...", "status": "作業中", "is_overdue": false }
+        { "id": 3, "title": "...", "status_id": 2, "status_label": "作業中", "is_overdue": false }
       ]
     }
   ]

@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Issue;
+use App\Enums\IssueStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -29,7 +29,7 @@ class UpdateIssueRequest extends FormRequest
                 'integer',
                 Rule::exists('engineers', 'id')->whereNull('deleted_at'),
             ],
-            'status' => ['sometimes', 'required', 'string', Rule::in(Issue::STATUSES)],
+            'status_id' => ['sometimes', 'required', 'integer', Rule::in(IssueStatus::values())],
             'is_managed' => ['sometimes', 'required', 'boolean'],
         ];
     }

@@ -101,25 +101,25 @@
                     <div class="filter-field filter-menu-field">
                         <span>ステータス</span>
                         <button class="filter-select-button" type="button" @click="toggleFilterMenu('status')">
-                            <span>{{ selectedStatusLabel(draftFilters.status) }}</span>
+                            <span>{{ selectedStatusLabel(draftFilters.status_id) }}</span>
                             <span class="filter-chevron" aria-hidden="true">⌄</span>
                         </button>
                         <div v-if="openFilterMenu === 'status'" class="filter-menu">
                             <label class="filter-check-row">
                                 <input
                                     type="checkbox"
-                                    :checked="draftFilters.status.length === 0"
-                                    @change="clearDraftSelection('status')"
+                                    :checked="draftFilters.status_id.length === 0"
+                                    @change="clearDraftSelection('status_id')"
                                 >
                                 <span>すべて</span>
                             </label>
-                            <label v-for="status in statuses" :key="status" class="filter-check-row">
+                            <label v-for="status in statuses" :key="status.id" class="filter-check-row">
                                 <input
                                     type="checkbox"
-                                    :checked="draftFilters.status.includes(status)"
-                                    @change="toggleDraftSelection('status', status)"
+                                    :checked="draftFilters.status_id.includes(String(status.id))"
+                                    @change="toggleDraftSelection('status_id', String(status.id))"
                                 >
-                                <span>{{ status }}</span>
+                                <span>{{ status.label }}</span>
                             </label>
                             <button class="filter-menu-close" type="button" @click="closeFilterMenu">閉じる</button>
                         </div>
@@ -375,8 +375,8 @@
                                     </select>
                                 </td>
                                 <td>
-                                    <select :value="issue.status" @change="updateStatus(issue, $event.target.value)">
-                                        <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
+                                    <select :value="issue.status_id" @change="updateStatus(issue, Number($event.target.value))">
+                                        <option v-for="status in statuses" :key="status.id" :value="status.id">{{ status.label }}</option>
                                     </select>
                                 </td>
                                 <td>
@@ -439,7 +439,15 @@ import { useIssueStore } from '../stores/issues';
 import { useProductStore } from '../stores/products';
 import { useUserStore } from '../stores/users';
 
-const statuses = ['未着手', '作業中', 'テスト中', '完了', '保留'];
+const statuses = [
+    { id: 1, label: '未着手' },
+    { id: 2, label: '作業中' },
+    { id: 3, label: 'テスト中' },
+    { id: 4, label: '完了' },
+    { id: 5, label: '保留' },
+];
+const statusIdsByLabel = Object.fromEntries(statuses.map((status) => [status.label, String(status.id)]));
+const DONE_STATUS_ID = 4;
 const EMPTY_FILTER_VALUE = '__empty__';
 const filterStorageKey = 'issue-list-filters';
 const issueStore = useIssueStore();
@@ -469,7 +477,7 @@ const filters = reactive({
     product_id: [],
     engineer_id: [],
     director_id: [],
-    status: defaultStatuses(),
+    status_id: defaultStatuses(),
     mode: 'all',
     planned_start_from: '',
     planned_start_to: '',
@@ -579,7 +587,7 @@ async function fetchIssues() {
 function filterParams() {
     const params = {};
 
-    for (const key of ['product_id', 'engineer_id', 'director_id', 'status']) {
+    for (const key of ['product_id', 'engineer_id', 'director_id', 'status_id']) {
         if (filters[key].length > 0) {
             params[key] = [...filters[key]];
         }
@@ -627,7 +635,7 @@ function defaultFilters() {
         product_id: [],
         engineer_id: [],
         director_id: [],
-        status: defaultStatuses(),
+        status_id: defaultStatuses(),
         mode: 'all',
         planned_start_from: '',
         planned_start_to: '',
@@ -642,7 +650,7 @@ function defaultFilters() {
 }
 
 function defaultStatuses() {
-    return statuses.filter((status) => status !== '完了');
+    return statuses.filter((status) => status.id !== DONE_STATUS_ID).map((status) => String(status.id));
 }
 
 function restoreFilters() {
@@ -665,7 +673,7 @@ function saveFilters() {
         product_id: [...filters.product_id],
         engineer_id: [...filters.engineer_id],
         director_id: [...filters.director_id],
-        status: [...filters.status],
+        status_id: [...filters.status_id],
         mode: filters.mode,
         planned_start_from: filters.planned_start_from,
         planned_start_to: filters.planned_start_to,
@@ -691,7 +699,7 @@ function assignFilters(target, nextFilters) {
     target.product_id = normalizeFilterArray(nextFilters.product_id).filter((id) => id !== EMPTY_FILTER_VALUE);
     target.engineer_id = normalizeFilterArray(nextFilters.engineer_id);
     target.director_id = normalizeFilterArray(nextFilters.director_id);
-    target.status = normalizeFilterArray(nextFilters.status).filter((status) => statuses.includes(status));
+    target.status_id = normalizeStatusFilter(nextFilters);
     target.mode = 'all';
 
     if (nextFilters.mode === '' || nextFilters.mode === 'all') {
@@ -737,7 +745,7 @@ function filterSnapshot(source = filters) {
         product_id: [...source.product_id],
         engineer_id: [...source.engineer_id],
         director_id: [...source.director_id],
-        status: [...source.status],
+        status_id: [...source.status_id],
         mode: source.mode,
         planned_start_from: source.planned_start_from,
         planned_start_to: source.planned_start_to,
@@ -815,6 +823,32 @@ function normalizeFilterArray(value) {
     return value.map((item) => String(item)).filter((item) => item !== '');
 }
 
+function normalizeStatusFilter(nextFilters) {
+    if (Object.prototype.hasOwnProperty.call(nextFilters, 'status_id')) {
+        return normalizeFilterArray(nextFilters.status_id).filter(isKnownStatusId);
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(nextFilters, 'status')) {
+        return defaultStatuses();
+    }
+
+    const legacyValues = normalizeFilterArray(nextFilters.status);
+
+    if (legacyValues.length === 0) {
+        return [];
+    }
+
+    const migratedValues = legacyValues
+        .map((status) => statusIdsByLabel[status] ?? status)
+        .filter(isKnownStatusId);
+
+    return migratedValues.length > 0 ? migratedValues : defaultStatuses();
+}
+
+function isKnownStatusId(statusId) {
+    return statuses.some((status) => String(status.id) === String(statusId));
+}
+
 function toggleDraftSelection(key, value) {
     const selected = draftFilters[key];
     const index = selected.indexOf(value);
@@ -848,7 +882,11 @@ function selectedStatusLabel(selectedStatuses) {
         return '完了以外';
     }
 
-    return selectedStatuses.join('、');
+    return selectedStatuses.map(statusLabel).join('、');
+}
+
+function statusLabel(statusId) {
+    return statuses.find((status) => String(status.id) === String(statusId))?.label ?? `ID:${statusId}`;
 }
 
 function selectedFlagLabel(selectedFlags) {
@@ -877,7 +915,7 @@ function flagLabel(flag) {
 
 async function removeFilterChip(chip) {
     if (chip.type === 'array') {
-        filters[chip.field] = chip.field === 'status' ? defaultStatuses() : [];
+        filters[chip.field] = chip.field === 'status_id' ? defaultStatuses() : [];
     }
 
     if (chip.type === 'mode') {
@@ -901,16 +939,16 @@ function buildActiveFilterChips() {
     pushArrayChip(chips, 'engineer_id', 'エンジニア', selectedOptionLabel(filters.engineer_id, engineerStore.engineers, '未割当', true), true);
     pushArrayChip(chips, 'director_id', 'ディレクター', selectedOptionLabel(filters.director_id, userStore.users, '未割当', true), true);
 
-    if (!isDefaultStatusSelection(filters.status)) {
-        if (filters.status.length === 0) {
+    if (!isDefaultStatusSelection(filters.status_id)) {
+        if (filters.status_id.length === 0) {
             chips.push({
-                key: 'status',
+                key: 'status_id',
                 type: 'array',
-                field: 'status',
+                field: 'status_id',
                 label: 'ステータス: すべて',
             });
         } else {
-            pushArrayChip(chips, 'status', 'ステータス', selectedStatusLabel(filters.status));
+            pushArrayChip(chips, 'status_id', 'ステータス', selectedStatusLabel(filters.status_id));
         }
     }
 
@@ -949,7 +987,7 @@ function pushArrayChip(chips, field, label, valueLabel, includesEmpty = false) {
         return;
     }
 
-    if (field !== 'status') {
+    if (field !== 'status_id') {
         const optionsByField = {
             product_id: productStore.products,
             engineer_id: engineerStore.engineers,
@@ -1052,7 +1090,7 @@ function sortValue(issue, key) {
         case 'engineer':
             return issue.engineer?.name ?? '';
         case 'status':
-            return statuses.indexOf(issue.status);
+            return issue.status_id;
         case 'is_managed':
             return issue.is_managed ? 1 : 0;
         case 'planned_start':
@@ -1103,9 +1141,9 @@ async function updateIssue(issue, payload) {
     }
 }
 
-async function updateStatus(issue, status) {
+async function updateStatus(issue, statusId) {
     try {
-        await issueStore.updateStatus(issue.id, status);
+        await issueStore.updateStatus(issue.id, statusId);
         showSuccessMessage('ステータスを更新しました。');
     } catch (error) {
         errorMessage.value = formatError(error, 'ステータスの更新に失敗しました。');

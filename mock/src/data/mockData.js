@@ -21,61 +21,61 @@ export const issues = [
   {
     id: 1, title: 'ログイン画面のバリデーション修正',
     github_url: 'https://github.com/example/repo/issues/101',
-    director_id: 4, engineer_id: 1, status: '完了',
+    director_id: 4, engineer_id: 1, status_id: 4,
     product_id: 1, is_managed: true, group_id: 1, display_order: 1,
   },
   {
     id: 2, title: 'パスワードリセット機能の実装',
     github_url: 'https://github.com/example/repo/issues/102',
-    director_id: 4, engineer_id: 2, status: '完了',
+    director_id: 4, engineer_id: 2, status_id: 4,
     product_id: 1, is_managed: true, group_id: 1, display_order: 2,
   },
   {
     id: 3, title: 'ダッシュボードのレスポンシブ対応',
     github_url: 'https://github.com/example/repo/issues/103',
-    director_id: 5, engineer_id: 1, status: '作業中',
+    director_id: 5, engineer_id: 1, status_id: 2,
     product_id: 1, is_managed: true, group_id: 2, display_order: 1,
   },
   {
     id: 4, title: 'CSVエクスポート機能',
     github_url: 'https://github.com/example/repo/issues/104',
-    director_id: 4, engineer_id: 3, status: 'テスト中',
+    director_id: 4, engineer_id: 3, status_id: 3,
     product_id: 1, is_managed: true, group_id: 2, display_order: 2,
   },
   {
     id: 5, title: '通知設定ページの実装',
     github_url: 'https://github.com/example/repo/issues/105',
-    director_id: 5, engineer_id: 2, status: '未着手',
+    director_id: 5, engineer_id: 2, status_id: 1,
     product_id: 1, is_managed: true, group_id: 2, display_order: 3,
   },
   {
     id: 6, title: 'APIレート制限の実装',
     github_url: 'https://github.com/example/repo/issues/106',
-    director_id: 4, engineer_id: 1, status: '保留',
+    director_id: 4, engineer_id: 1, status_id: 5,
     product_id: 1, is_managed: true, group_id: 2, display_order: 4,
   },
   {
     id: 7, title: 'ユーザー管理画面リニューアル',
     github_url: 'https://github.com/example/repo/issues/201',
-    director_id: 5, engineer_id: 2, status: '作業中',
+    director_id: 5, engineer_id: 2, status_id: 2,
     product_id: 2, is_managed: true, group_id: 3, display_order: 1,
   },
   {
     id: 8, title: '権限管理機能の追加',
     github_url: 'https://github.com/example/repo/issues/202',
-    director_id: 5, engineer_id: 3, status: '未着手',
+    director_id: 5, engineer_id: 3, status_id: 1,
     product_id: 2, is_managed: true, group_id: 3, display_order: 2,
   },
   {
     id: 9, title: 'バグ修正: 検索結果ページのクラッシュ',
     github_url: 'https://github.com/example/repo/issues/301',
-    director_id: 4, engineer_id: 1, status: '作業中',
+    director_id: 4, engineer_id: 1, status_id: 2,
     product_id: 1, is_managed: true, group_id: null, display_order: 1,
   },
   {
     id: 10, title: 'パフォーマンス改善: DB クエリ最適化',
     github_url: 'https://github.com/example/repo/issues/302',
-    director_id: 5, engineer_id: 3, status: '未着手',
+    director_id: 5, engineer_id: 3, status_id: 1,
     product_id: 2, is_managed: true, group_id: null, display_order: 2,
   },
 ]
@@ -93,7 +93,13 @@ export const issueSchedules = [
   { issue_id: 10, planned_start: '2026-05-10', actual_start: null, planned_end: '2026-05-25', actual_end: null },
 ]
 
-export const statuses = ['未着手', '作業中', 'テスト中', '完了', '保留']
+export const statuses = [
+  { id: 1, label: '未着手' },
+  { id: 2, label: '作業中' },
+  { id: 3, label: 'テスト中' },
+  { id: 4, label: '完了' },
+  { id: 5, label: '保留' },
+]
 
 export function getMemberById(id) {
   return members.find(m => m.id === id)

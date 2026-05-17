@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('director_id')->nullable()->constrained('users')->restrictOnDelete();
             $table->foreignId('engineer_id')->nullable()->constrained('engineers')->restrictOnDelete();
             $table->foreignId('product_id')->constrained('products')->restrictOnDelete();
-            $table->enum('status', ['未着手', '作業中', 'テスト中', '完了', '保留'])->default('未着手');
+            $table->unsignedTinyInteger('status_id')->default(1);
             $table->boolean('is_managed')->default(false);
             $table->unsignedInteger('display_order')->default(0);
             $table->unsignedInteger('github_issue_number');
@@ -29,7 +29,7 @@ return new class extends Migration
             $table->index('director_id');
             $table->index('engineer_id');
             $table->index('product_id');
-            $table->index('status');
+            $table->index('status_id');
             $table->index('is_managed');
             $table->index('github_state');
             $table->index(['product_id', 'display_order']);

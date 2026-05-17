@@ -46,13 +46,15 @@
 
 - ISSUEごとにステータスを持つ（項目は仮・後から変更可能）
 
-| ステータス | 意味 |
-|-----------|------|
-| 未着手 | まだ着手していない |
-| 作業中 | 開発中 |
-| テスト中 | 動作確認・QA中 |
-| 完了 | リリース済み・終了 |
-| 保留 | 一時中断・待ち状態 |
+| ID | ステータス | 意味 |
+|---|-----------|------|
+| 1 | 未着手 | まだ着手していない |
+| 2 | 作業中 | 開発中 |
+| 3 | テスト中 | 動作確認・QA中 |
+| 4 | 完了 | リリース済み・終了 |
+| 5 | 保留 | 一時中断・待ち状態 |
+
+DB/APIではステータスIDを保持・送受信し、画面表示では従来通り日本語ラベルを使用する。
 
 ### 3. 管理表
 
@@ -113,11 +115,11 @@ GitHub Issuesで作成・更新されたIssueを、本ツールに自動取り�
   - 再同期: Personal Access Token（PAT）を `.env` の `GITHUB_TOKEN` に保存。全リポジトリ共通で使用
 - **取り込み時のデフォルト**：
   - `is_managed = false`（管理表には未追加。ディレクターが「未追加リスト」から選んで管理表へ追加）
-  - `status = 未着手`
+  - `status_id = 1`（未着手）
   - `director_id = NULL`、`engineer_id = NULL`（GitHub assignee はマッピングしない。ディレクターが手動でセット）
 - **重複時の挙動（Upsert）**：`(product_id, github_issue_number)` をキーに既存レコードを判定
   - 既存あり：`title` / GitHub状態 / `github_url` / 同期日時 のみ上書き
-  - **ツール独自項目は保護**：`director_id` / `engineer_id` / `status` / `is_managed` / `display_order` / 予定日・実績日 は同期で上書きしない
+  - **ツール独自項目は保護**：`director_id` / `engineer_id` / `status_id` / `is_managed` / `display_order` / 予定日・実績日 は同期で上書きしない
 - **PR除外**：GitHub Issues APIは Pull Request も返却するが、`pull_request` フィールドの有無で判定してスキップ
 - **自動反映結果の可視化**：Webhook処理結果を `sync_logs` に履歴保存。画面には最終反映日時・最終ステータスを表示する
 - **再同期結果の可視化**：作成 / 更新 / スキップ / 失敗 の件数をトーストで表示し、`sync_logs` に履歴保存
