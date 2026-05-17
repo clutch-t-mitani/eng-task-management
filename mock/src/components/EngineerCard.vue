@@ -19,30 +19,30 @@
         <span class="stat-label">完了</span>
       </div>
       <div class="stat">
-        <span class="stat-value">{{ totalHours }}h</span>
-        <span class="stat-label">工数概算</span>
+        <span class="stat-value">{{ wipCount }}</span>
+        <span class="stat-label">作業中</span>
       </div>
     </div>
 
     <div class="progress-bar-wrap">
       <div
         v-for="s in statusOrder"
-        :key="s.status"
+        :key="s.id"
         class="progress-segment"
-        :style="{ width: segmentWidth(s.status) + '%', background: s.color }"
-        :title="s.status + ': ' + countByStatus(s.status) + '件'"
+        :style="{ width: segmentWidth(s.id) + '%', background: s.color }"
+        :title="s.label + ': ' + countByStatus(s.id) + '件'"
       />
     </div>
     <div class="progress-legend">
-      <span v-for="s in statusOrder" :key="s.status" class="legend-item">
+      <span v-for="s in statusOrder" :key="s.id" class="legend-item">
         <span class="legend-dot" :style="{ background: s.color }" />
-        {{ s.status }} {{ countByStatus(s.status) }}
+        {{ s.label }} {{ countByStatus(s.id) }}
       </span>
     </div>
 
     <div v-if="myIssues.length > 0" class="issue-list">
       <div v-for="issue in myIssues.slice(0, 3)" :key="issue.id" class="issue-item">
-        <span class="issue-dot" :style="{ background: statusColor(issue.status) }" />
+        <span class="issue-dot" :style="{ background: statusColor(issue.status_id) }" />
         <span class="issue-title">{{ issue.title }}</span>
       </div>
       <div v-if="myIssues.length > 3" class="issue-more">他 {{ myIssues.length - 3 }} 件</div>
@@ -52,7 +52,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { issues, issueSchedules, calcWorkHours, isOverdue } from '../data/mockData.js'
+import { issues, issueSchedules, isOverdue } from '../data/mockData.js'
 
 const props = defineProps({ member: Object })
 
@@ -61,10 +61,8 @@ const myIssues = computed(() =>
 )
 
 const totalIssues = computed(() => myIssues.value.length)
-const doneCount = computed(() => myIssues.value.filter(i => i.status === '完了').length)
-const totalHours = computed(() =>
-  Math.round(myIssues.value.reduce((sum, i) => sum + calcWorkHours(i.id), 0) * 10) / 10
-)
+const doneCount = computed(() => myIssues.value.filter(i => i.status_id === 4).length)
+const wipCount = computed(() => myIssues.value.filter(i => i.status_id === 2).length)
 const overdueCount = computed(() =>
   myIssues.value.filter(i => {
     const s = issueSchedules.find(sc => sc.issue_id === i.id)
@@ -75,24 +73,24 @@ const overdueCount = computed(() =>
 const initials = computed(() => props.member.name.charAt(0))
 
 const statusOrder = [
-  { status: '作業中', color: '#63b3ed' },
-  { status: 'テスト中', color: '#f6e05e' },
-  { status: '未着手', color: '#e2e8f0' },
-  { status: '完了', color: '#68d391' },
-  { status: '保留', color: '#f6ad55' },
+  { id: 2, label: '作業中', color: '#63b3ed' },
+  { id: 3, label: 'テスト中', color: '#f6e05e' },
+  { id: 1, label: '未着手', color: '#e2e8f0' },
+  { id: 4, label: '完了', color: '#68d391' },
+  { id: 5, label: '保留', color: '#f6ad55' },
 ]
 
-function countByStatus(status) {
-  return myIssues.value.filter(i => i.status === status).length
+function countByStatus(statusId) {
+  return myIssues.value.filter(i => i.status_id === statusId).length
 }
 
-function segmentWidth(status) {
+function segmentWidth(statusId) {
   if (totalIssues.value === 0) return 0
-  return (countByStatus(status) / totalIssues.value) * 100
+  return (countByStatus(statusId) / totalIssues.value) * 100
 }
 
-function statusColor(status) {
-  return statusOrder.find(s => s.status === status)?.color ?? '#e2e8f0'
+function statusColor(statusId) {
+  return statusOrder.find(s => s.id === statusId)?.color ?? '#e2e8f0'
 }
 </script>
 

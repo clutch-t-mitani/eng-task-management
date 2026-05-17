@@ -49,8 +49,8 @@ const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '
 
 const managedIssues = computed(() => issues.filter(i => i.is_managed))
 const totalIssues = computed(() => managedIssues.value.length)
-const doneIssues = computed(() => managedIssues.value.filter(i => i.status === '完了').length)
-const wipIssues = computed(() => managedIssues.value.filter(i => i.status === '作業中').length)
+const doneIssues = computed(() => managedIssues.value.filter(i => i.status_id === 4).length)
+const wipIssues = computed(() => managedIssues.value.filter(i => i.status_id === 2).length)
 const completionRate = computed(() =>
   totalIssues.value === 0 ? 0 : Math.round((doneIssues.value / totalIssues.value) * 100)
 )

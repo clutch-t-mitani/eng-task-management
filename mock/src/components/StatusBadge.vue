@@ -1,17 +1,21 @@
 <template>
-  <span class="badge" :class="statusClass">{{ status }}</span>
+  <span class="badge" :class="statusClass">{{ label }}</span>
 </template>
 
 <script setup>
-const props = defineProps({ status: String })
+import { computed } from 'vue'
+import { statuses } from '../data/mockData.js'
 
-const statusClass = {
-  '未着手': 'badge-todo',
-  '作業中': 'badge-wip',
-  'テスト中': 'badge-test',
-  '完了': 'badge-done',
-  '保留': 'badge-hold',
-}[props.status] || 'badge-todo'
+const props = defineProps({ statusId: Number, label: String })
+
+const label = computed(() => props.label ?? statuses.find(status => status.id === props.statusId)?.label ?? '未着手')
+const statusClass = computed(() => ({
+  1: 'badge-todo',
+  2: 'badge-wip',
+  3: 'badge-test',
+  4: 'badge-done',
+  5: 'badge-hold',
+}[props.statusId] || 'badge-todo'))
 </script>
 
 <style scoped>

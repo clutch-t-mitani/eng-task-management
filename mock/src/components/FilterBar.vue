@@ -16,9 +16,9 @@
     </div>
     <div class="filter-group">
       <label>ステータス</label>
-      <select v-model="localFilters.status" @change="emit">
+      <select v-model="localFilters.status_id" @change="emit">
         <option value="">すべて</option>
-        <option v-for="s in statuses" :key="s">{{ s }}</option>
+        <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.label }}</option>
       </select>
     </div>
     <button class="btn-reset" @click="reset">リセット</button>
@@ -31,7 +31,7 @@ import { products, members, statuses } from '../data/mockData.js'
 
 const emits = defineEmits(['change'])
 
-const localFilters = reactive({ product_id: null, member_id: null, status: '' })
+const localFilters = reactive({ product_id: null, member_id: null, status_id: '' })
 
 function emit() {
   emits('change', { ...localFilters })
@@ -40,7 +40,7 @@ function emit() {
 function reset() {
   localFilters.product_id = null
   localFilters.member_id = null
-  localFilters.status = ''
+  localFilters.status_id = ''
   emit()
 }
 </script>
