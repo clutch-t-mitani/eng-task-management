@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 class Issue extends Model
 {
@@ -63,6 +64,28 @@ class Issue extends Model
     public function schedule(): HasOne
     {
         return $this->hasOne(IssueSchedule::class);
+    }
+
+    public function isOverdue(?IssueSchedule $schedule = null): bool
+    {
+        $schedule ??= $this->schedule;
+
+        if (! $schedule?->planned_end || $schedule->actual_end || $this->status === '完了') {
+            return false;
+        }
+
+        return $schedule->planned_end->lt(Carbon::today());
+    }
+
+    public function isDueSoon(?IssueSchedule $schedule = null): bool
+    {
+        $schedule ??= $this->schedule;
+
+        if (! $schedule?->planned_end || $schedule->actual_end || $this->status === '完了') {
+            return false;
+        }
+
+        return $schedule->planned_end->betweenIncluded(Carbon::today(), Carbon::today()->addDays(3));
     }
 
     /**

@@ -8,7 +8,6 @@ use App\Models\IssueSchedule;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Carbon;
 
 /**
  * @mixin Issue
@@ -20,7 +19,10 @@ class IssueResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        /** @var Issue $issue */
+        $issue = $this->resource;
         $schedule = $this->whenLoaded('schedule');
+        $loadedSchedule = $schedule instanceof IssueSchedule ? $schedule : null;
 
         return [
             'id' => $this->id,
@@ -35,9 +37,9 @@ class IssueResource extends JsonResource
             'product_id' => $this->product_id,
             'director' => $this->person($this->whenLoaded('director')),
             'engineer' => $this->person($this->whenLoaded('engineer')),
-            'schedule' => $schedule instanceof IssueSchedule ? $this->schedulePayload($schedule) : null,
-            'is_overdue' => $this->isOverdue($schedule instanceof IssueSchedule ? $schedule : null),
-            'is_due_soon' => $this->isDueSoon($schedule instanceof IssueSchedule ? $schedule : null),
+            'schedule' => $loadedSchedule ? $this->schedulePayload($loadedSchedule) : null,
+            'is_overdue' => $loadedSchedule ? $issue->isOverdue($loadedSchedule) : false,
+            'is_due_soon' => $loadedSchedule ? $issue->isDueSoon($loadedSchedule) : false,
         ];
     }
 
@@ -68,23 +70,5 @@ class IssueResource extends JsonResource
             'actual_start' => $schedule->actual_start?->toDateString(),
             'actual_end' => $schedule->actual_end?->toDateString(),
         ];
-    }
-
-    private function isOverdue(?IssueSchedule $schedule): bool
-    {
-        if (! $schedule?->planned_end || $schedule->actual_end || $this->status === '完了') {
-            return false;
-        }
-
-        return $schedule->planned_end->lt(Carbon::today());
-    }
-
-    private function isDueSoon(?IssueSchedule $schedule): bool
-    {
-        if (! $schedule?->planned_end || $schedule->actual_end || $this->status === '完了') {
-            return false;
-        }
-
-        return $schedule->planned_end->betweenIncluded(Carbon::today(), Carbon::today()->addDays(3));
     }
 }

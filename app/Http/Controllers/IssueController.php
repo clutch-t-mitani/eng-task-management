@@ -8,78 +8,51 @@ use App\Http\Requests\UpdateIssueScheduleRequest;
 use App\Http\Requests\UpdateIssueStatusRequest;
 use App\Http\Resources\IssueResource;
 use App\Models\Issue;
+use App\Services\IssueService;
 use Illuminate\Http\JsonResponse;
 
 class IssueController extends Controller
 {
+    public function __construct(private readonly IssueService $issues) {}
+
     public function index(IssueIndexRequest $request): JsonResponse
     {
-        $filters = $request->validated();
-
-        $issues = Issue::query()
-            ->with(['director', 'engineer', 'schedule'])
-            ->applyFilters($filters)
-            ->when(
-                $request->boolean('unmanaged_imports'),
-                fn ($query) => $query->unmanagedImports(),
-                fn ($query) => $query->when($request->has('is_managed'), fn ($query) => $query->where('is_managed', $request->boolean('is_managed'))),
-            )
-            ->orderBy('product_id')
-            ->orderBy('display_order')
-            ->orderBy('id')
-            ->get();
+        $issues = $this->issues->list(
+            $request->validated(),
+            $request->boolean('unmanaged_imports'),
+            $request->has('is_managed') ? $request->boolean('is_managed') : null,
+        );
 
         return response()->json(IssueResource::collection($issues)->resolve());
     }
 
     public function show(Issue $issue): JsonResponse
     {
-        $issue->load(['director', 'engineer', 'schedule']);
-
-        return response()->json(IssueResource::make($issue)->resolve());
+        return response()->json(IssueResource::make($this->issues->loadForResponse($issue))->resolve());
     }
 
     public function update(UpdateIssueRequest $request, Issue $issue): JsonResponse
     {
-        $issue->update($request->validated());
-        $issue->load(['director', 'engineer', 'schedule']);
-
-        return response()->json(IssueResource::make($issue)->resolve());
+        return response()->json(IssueResource::make($this->issues->update($issue, $request->validated()))->resolve());
     }
 
     public function updateStatus(UpdateIssueStatusRequest $request, Issue $issue): JsonResponse
     {
-        $issue->update($request->validated());
-        $issue->load(['director', 'engineer', 'schedule']);
-
-        return response()->json(IssueResource::make($issue)->resolve());
+        return response()->json(IssueResource::make($this->issues->update($issue, $request->validated()))->resolve());
     }
 
     public function toggleManaged(Issue $issue): JsonResponse
     {
-        $issue->update(['is_managed' => ! $issue->is_managed]);
-        $issue->load(['director', 'engineer', 'schedule']);
-
-        return response()->json(IssueResource::make($issue)->resolve());
+        return response()->json(IssueResource::make($this->issues->toggleManaged($issue))->resolve());
     }
 
     public function destroy(Issue $issue): JsonResponse
     {
-        $issue->update(['is_managed' => false]);
-        $issue->load(['director', 'engineer', 'schedule']);
-
-        return response()->json(IssueResource::make($issue)->resolve());
+        return response()->json(IssueResource::make($this->issues->removeFromManaged($issue))->resolve());
     }
 
     public function updateSchedule(UpdateIssueScheduleRequest $request, Issue $issue): JsonResponse
     {
-        $issue->schedule()->updateOrCreate(
-            ['issue_id' => $issue->id],
-            $request->validated(),
-        );
-
-        $issue->load(['director', 'engineer', 'schedule']);
-
-        return response()->json(IssueResource::make($issue)->resolve());
+        return response()->json(IssueResource::make($this->issues->updateSchedule($issue, $request->validated()))->resolve());
     }
 }
