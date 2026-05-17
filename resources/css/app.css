@@ -485,6 +485,13 @@ body {
     gap: 4px;
 }
 
+.filter-date-control {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex: 1;
+}
+
 .filter-date-inputs input[type="date"] {
     width: 100%;
     min-width: 0;
@@ -496,6 +503,38 @@ body {
     color: #1a202c;
     font: inherit;
     font-weight: 400;
+}
+
+.filter-date-control input[type="date"] {
+    padding-right: 28px;
+}
+
+.filter-date-clear {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #718096;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+
+.filter-date-clear:hover,
+.filter-date-clear:focus-visible {
+    background: #edf2f7;
+    color: #2d3748;
+    outline: none;
 }
 
 .filter-date-sep {
@@ -510,6 +549,10 @@ body {
     align-items: center;
     justify-content: flex-end;
     margin-top: -2px;
+}
+
+.filter-reset-wrapper {
+    display: inline-flex;
 }
 
 .issue-table-wrap {
@@ -527,12 +570,60 @@ body {
 }
 
 .issue-count-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
     flex-shrink: 0;
     border-bottom: 1px solid #edf2f7;
     padding: 10px 14px;
     color: #4a5568;
     font-size: 13px;
     font-weight: 700;
+}
+
+.issue-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.issue-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 280px;
+    min-height: 26px;
+    border: 1px solid #bee3f8;
+    border-radius: 999px;
+    background: #ebf8ff;
+    padding: 3px 8px 3px 10px;
+    color: #2b6cb0;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.issue-filter-chip span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.issue-filter-chip span:last-child {
+    color: #4a5568;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.issue-filter-chip:hover,
+.issue-filter-chip:focus-visible {
+    border-color: #90cdf4;
+    background: #dff3ff;
+    outline: none;
 }
 
 .issue-table {

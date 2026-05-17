@@ -8,6 +8,8 @@ use Illuminate\Validation\Rule;
 
 class IssueIndexRequest extends FormRequest
 {
+    public const EMPTY_FILTER_VALUE = '__empty__';
+
     public function authorize(): bool
     {
         return true;
@@ -52,23 +54,53 @@ class IssueIndexRequest extends FormRequest
             'product_id' => ['nullable', 'array'],
             'product_id.*' => ['integer', 'exists:products,id'],
             'engineer_id' => ['nullable', 'array'],
-            'engineer_id.*' => ['integer', 'exists:engineers,id'],
+            'engineer_id.*' => [
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === self::EMPTY_FILTER_VALUE) {
+                        return;
+                    }
+
+                    $validator = validator(
+                        [$attribute => $value],
+                        [$attribute => ['integer', 'exists:engineers,id']],
+                    );
+
+                    if ($validator->fails()) {
+                        $fail('選択されたエンジニアは正しくありません。');
+                    }
+                },
+            ],
             'director_id' => ['nullable', 'array'],
-            'director_id.*' => ['integer', 'exists:users,id'],
+            'director_id.*' => [
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === self::EMPTY_FILTER_VALUE) {
+                        return;
+                    }
+
+                    $validator = validator(
+                        [$attribute => $value],
+                        [$attribute => ['integer', 'exists:users,id']],
+                    );
+
+                    if ($validator->fails()) {
+                        $fail('選択されたディレクターは正しくありません。');
+                    }
+                },
+            ],
             'status' => ['nullable', 'array'],
             'status.*' => ['string', Rule::in(Issue::STATUSES)],
             'is_managed' => ['nullable', 'boolean'],
             'unmanaged_imports' => ['nullable', 'boolean'],
             'planned_start_from' => ['nullable', 'date_format:Y-m-d'],
-            'planned_start_to' => ['nullable', 'date_format:Y-m-d'],
+            'planned_start_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:planned_start_from'],
             'planned_end_from' => ['nullable', 'date_format:Y-m-d'],
-            'planned_end_to' => ['nullable', 'date_format:Y-m-d'],
+            'planned_end_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:planned_end_from'],
             'actual_start_from' => ['nullable', 'date_format:Y-m-d'],
-            'actual_start_to' => ['nullable', 'date_format:Y-m-d'],
+            'actual_start_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:actual_start_from'],
             'actual_end_from' => ['nullable', 'date_format:Y-m-d'],
-            'actual_end_to' => ['nullable', 'date_format:Y-m-d'],
+            'actual_end_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:actual_end_from'],
             'flags' => ['nullable', 'array'],
-            'flags.*' => ['string', Rule::in(['overdue', 'due_soon'])],
+            'flags.*' => ['string', Rule::in(['overdue', 'due_soon', 'none'])],
         ];
     }
 }

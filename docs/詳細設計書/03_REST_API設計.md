@@ -50,8 +50,8 @@
 | メソッド | パス | 概要 |
 |---|---|---|
 | GET | `/api/v1/issues` | 一覧（クエリ: product_id, engineer_id, director_id, status, is_managed, unmanaged_imports, planned_start_from/to, planned_end_from/to, actual_start_from/to, actual_end_from/to, flags[]。API未指定時は管理対象/未管理・完了を含むすべて） |
-| GET | `/api/v1/issues/{id}` | 詳細（schedule・group含む） |
-| PUT | `/api/v1/issues/{id}` | ツール管理項目の更新（director_id, engineer_id, status, is_managed, group_id） |
+| GET | `/api/v1/issues/{id}` | 詳細（director・engineer・schedule含む） |
+| PUT | `/api/v1/issues/{id}` | ツール管理項目の更新（director_id, engineer_id, status, is_managed） |
 | PATCH | `/api/v1/issues/{id}/status` | ステータスのみ更新（管理表インライン変更用） |
 | PATCH | `/api/v1/issues/{id}/managed` | is_managed フラグ切り替え |
 | DELETE | `/api/v1/issues/{id}` | ツール上の管理対象から除外（GitHub Issue本体は削除しない） |
@@ -65,8 +65,7 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
   "director_id": 4,
   "engineer_id": 1,
   "status": "作業中",
-  "is_managed": true,
-  "group_id": 1
+  "is_managed": true
 }
 ```
 
@@ -84,7 +83,6 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
   "product_id": 1,
   "director": { "id": 4, "name": "田中 美咲" },
   "engineer": { "id": 1, "name": "山田 太郎" },
-  "group": { "id": 1, "name": "v1.2 リリース" },
   "schedule": {
     "planned_start": "2026-05-01",
     "planned_end": "2026-05-08",
@@ -98,6 +96,8 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
 
 `github_issue_number` / `github_state` / `github_synced_at` はGitHubから取り込まれたISSUEで必須。ISSUE一覧画面のステータスフィルターは完了以外（`status[]=未着手&status[]=作業中&status[]=テスト中&status[]=保留`）を初期値とし、完了したISSUEはステータス条件を変更して参照する。管理表フィルターは画面上で「すべて」を初期値とし、「表示中のみ」は `is_managed=true`、「未追加のみ」は `unmanaged_imports=true` を送る。`unmanaged_imports=true` クエリは「`is_managed=false` かつ `github_issue_number IS NOT NULL`」の絞り込みで、未追加リストパネルが利用する。
 
+`product_id` / `engineer_id` / `director_id` / `status` は単一値と配列指定の両方を受け付ける。`engineer_id` / `director_id` では `__empty__` を未割当（NULL）指定として扱い、通常のID指定と組み合わせた場合は OR 条件で絞り込む。
+
 **日付フィルタークエリパラメータ（YYYY-MM-DD）**
 
 | パラメータ | 説明 |
@@ -110,12 +110,15 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
 | `actual_start_to` | 実績開始日 ≤ 指定日 |
 | `actual_end_from` | 実績終了日 ≥ 指定日 |
 | `actual_end_to` | 実績終了日 ≤ 指定日 |
-| `flags[]` | `overdue`（期限超過）・`due_soon`（期限近い）の配列。複数指定時はOR結合 |
+| `flags[]` | `overdue`（期限超過）・`due_soon`（期限近い）・`none`（フラグなし）の配列。複数指定時はOR結合 |
 
-`flags[]=overdue`: `planned_end < today AND actual_end IS NULL AND status ≠ 完了`  
-`flags[]=due_soon`: `planned_end` が today〜today+3 AND `actual_end IS NULL` AND `status ≠ 完了`
+- `flags[]=overdue`: `planned_end < today AND actual_end IS NULL AND status ≠ 完了`
+- `flags[]=due_soon`: `planned_end` が today〜today+3 AND `actual_end IS NULL` AND `status ≠ 完了`
+- `flags[]=none`: `status = 完了` または `planned_end <= today+3 AND actual_end IS NULL` に該当するスケジュールが存在しないISSUE
 
-`PUT /api/v1/issues/{id}` の `group_id` は `issues` テーブルのカラムではなく、`group_issues` の紐付けを更新するための入力値として扱う。`group_id` が数値の場合は同一 `product_id` のグループへ追加または移動し、`group_id: null` の場合は未グループ化する。別プロダクトのグループを指定した場合は `422` を返す。
+日付範囲は `*_to` が対応する `*_from` 以降であることをバリデーションする。不正な日付形式、存在しない担当者ID、許可外の `flags[]` は `422` を返す。
+
+`group_id` とレスポンスの `group` はP4（管理表・グループ機能）で追加する。本ブランチのISSUE管理APIではグループ紐付けを更新しない。
 
 **スケジュール更新リクエスト例（PUT /issues/{id}/schedule）**:
 ```json
@@ -126,6 +129,8 @@ ISSUEの新規作成はGitHub Issuesで行い、Webhookまたは再同期で本�
   "actual_end": null
 }
 ```
+
+スケジュール更新では `planned_end` は `planned_start` 以降、`actual_end` は `actual_start` 以降であることを検証する。部分更新時は未送信項目を既存スケジュール値で補完したうえで日付順を判定し、終了日が開始日より前になる場合は `422` を返す。`null` は未設定として扱い、日付順チェックの対象外にする。
 
 ### グループ管理
 

@@ -12,6 +12,8 @@ class Issue extends Model
 {
     public const STATUSES = ['未着手', '作業中', 'テスト中', '完了', '保留'];
 
+    private const EMPTY_FILTER_VALUE = '__empty__';
+
     protected $fillable = [
         'title',
         'github_url',
@@ -117,8 +119,8 @@ class Issue extends Model
     {
         return $query
             ->when($filters['product_id'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyFilterValue($query, 'product_id', $value))
-            ->when($filters['engineer_id'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyFilterValue($query, 'engineer_id', $value))
-            ->when($filters['director_id'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyFilterValue($query, 'director_id', $value))
+            ->when($filters['engineer_id'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyNullableFilterValue($query, 'engineer_id', $value))
+            ->when($filters['director_id'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyNullableFilterValue($query, 'director_id', $value))
             ->when($filters['status'] ?? null, fn (Builder $query, mixed $value): Builder => $this->applyFilterValue($query, 'status', $value))
             ->when(
                 array_filter([
@@ -164,16 +166,26 @@ class Issue extends Model
                 $today = now()->toDateString();
                 $dueSoonEnd = now()->addDays(3)->toDateString();
 
-                return $query
-                    ->where('status', '!=', '完了')
-                    ->where(function (Builder $q) use ($flags, $today, $dueSoonEnd): void {
-                        if (in_array('overdue', $flags, true)) {
-                            $q->orWhereHas('schedule', fn ($s) => $s->where('planned_end', '<', $today)->whereNull('actual_end'));
-                        }
-                        if (in_array('due_soon', $flags, true)) {
-                            $q->orWhereHas('schedule', fn ($s) => $s->whereBetween('planned_end', [$today, $dueSoonEnd])->whereNull('actual_end'));
-                        }
-                    });
+                return $query->where(function (Builder $q) use ($flags, $today, $dueSoonEnd): void {
+                    if (in_array('overdue', $flags, true)) {
+                        $q->orWhere(function (Builder $q) use ($today): void {
+                            $q->where('status', '!=', '完了')
+                                ->whereHas('schedule', fn ($s) => $s->where('planned_end', '<', $today)->whereNull('actual_end'));
+                        });
+                    }
+                    if (in_array('due_soon', $flags, true)) {
+                        $q->orWhere(function (Builder $q) use ($today, $dueSoonEnd): void {
+                            $q->where('status', '!=', '完了')
+                                ->whereHas('schedule', fn ($s) => $s->whereBetween('planned_end', [$today, $dueSoonEnd])->whereNull('actual_end'));
+                        });
+                    }
+                    if (in_array('none', $flags, true)) {
+                        $q->orWhere(function (Builder $q) use ($dueSoonEnd): void {
+                            $q->where('status', '完了')
+                                ->orWhereDoesntHave('schedule', fn ($s) => $s->where('planned_end', '<=', $dueSoonEnd)->whereNull('actual_end'));
+                        });
+                    }
+                });
             });
     }
 
@@ -188,5 +200,26 @@ class Issue extends Model
         }
 
         return $query->where($column, $value);
+    }
+
+    /**
+     * @param  Builder<Issue>  $query
+     * @return Builder<Issue>
+     */
+    private function applyNullableFilterValue(Builder $query, string $column, mixed $value): Builder
+    {
+        $values = is_array($value) ? $value : [$value];
+        $hasEmptyFilter = in_array(self::EMPTY_FILTER_VALUE, $values, true);
+        $ids = array_values(array_filter($values, fn (mixed $item): bool => $item !== self::EMPTY_FILTER_VALUE));
+
+        return $query->where(function (Builder $q) use ($column, $hasEmptyFilter, $ids): void {
+            if ($ids !== []) {
+                $q->whereIn($column, $ids);
+            }
+
+            if ($hasEmptyFilter) {
+                $ids === [] ? $q->whereNull($column) : $q->orWhereNull($column);
+            }
+        });
     }
 }

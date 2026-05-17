@@ -20,14 +20,14 @@
         </div>
         <p v-if="errorMessage" class="alert alert-error">{{ errorMessage }}</p>
 
-        <form class="issue-filter-panel" @submit.prevent="applyDraftFilters">
+        <form ref="filterPanelRef" class="issue-filter-panel" @submit.prevent="applyDraftFilters">
             <div class="filter-panel-grid">
                 <div class="filter-section-toggle-row">
                     <button
                         class="filter-section-toggle"
                         type="button"
                         :aria-expanded="isMainFiltersOpen"
-                        @click="isMainFiltersOpen = !isMainFiltersOpen"
+                        @click="toggleMainFilters"
                     >
                         <span>基本条件</span>
                         <span>{{ isMainFiltersOpen ? '基本条件を閉じる' : '基本条件を開く' }}</span>
@@ -66,7 +66,7 @@
                     <div class="filter-field filter-menu-field">
                         <span>エンジニア</span>
                         <button class="filter-select-button" type="button" @click="toggleFilterMenu('engineer_id')">
-                            <span>{{ selectedOptionLabel(draftFilters.engineer_id, engineerStore.engineers) }}</span>
+                            <span>{{ selectedOptionLabel(draftFilters.engineer_id, engineerStore.engineers, '未割当', true) }}</span>
                             <span class="filter-chevron" aria-hidden="true">⌄</span>
                         </button>
                         <div v-if="openFilterMenu === 'engineer_id'" class="filter-menu">
@@ -85,6 +85,14 @@
                                     @change="toggleDraftSelection('engineer_id', String(engineer.id))"
                                 >
                                 <span>{{ engineer.name }}</span>
+                            </label>
+                            <label class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.engineer_id.includes(EMPTY_FILTER_VALUE)"
+                                    @change="toggleDraftSelection('engineer_id', EMPTY_FILTER_VALUE)"
+                                >
+                                <span>未割当</span>
                             </label>
                             <button class="filter-menu-close" type="button" @click="closeFilterMenu">閉じる</button>
                         </div>
@@ -132,7 +140,7 @@
                         class="filter-section-toggle"
                         type="button"
                         :aria-expanded="isDateFiltersOpen"
-                        @click="isDateFiltersOpen = !isDateFiltersOpen"
+                        @click="toggleDateFilters"
                     >
                         <span>詳細条件</span>
                         <span>{{ isDateFiltersOpen ? '詳細条件を閉じる' : '詳細条件を開く' }}</span>
@@ -144,7 +152,7 @@
                     <div class="filter-field filter-menu-field">
                         <span>ディレクター</span>
                         <button class="filter-select-button" type="button" @click="toggleFilterMenu('director_id')">
-                            <span>{{ selectedOptionLabel(draftFilters.director_id, userStore.users) }}</span>
+                            <span>{{ selectedOptionLabel(draftFilters.director_id, userStore.users, '未割当', true) }}</span>
                             <span class="filter-chevron" aria-hidden="true">⌄</span>
                         </button>
                         <div v-if="openFilterMenu === 'director_id'" class="filter-menu">
@@ -163,6 +171,14 @@
                                     @change="toggleDraftSelection('director_id', String(user.id))"
                                 >
                                 <span>{{ user.name }}</span>
+                            </label>
+                            <label class="filter-check-row">
+                                <input
+                                    type="checkbox"
+                                    :checked="draftFilters.director_id.includes(EMPTY_FILTER_VALUE)"
+                                    @change="toggleDraftSelection('director_id', EMPTY_FILTER_VALUE)"
+                                >
+                                <span>未割当</span>
                             </label>
                             <button class="filter-menu-close" type="button" @click="closeFilterMenu">閉じる</button>
                         </div>
@@ -198,45 +214,74 @@
                     <div class="filter-field filter-date-range">
                         <span>予定開始</span>
                         <div class="filter-date-inputs">
-                            <input type="date" v-model="draftFilters.planned_start_from">
+                            <span class="filter-date-control">
+                                <input type="date" v-model="draftFilters.planned_start_from">
+                                <button v-if="draftFilters.planned_start_from" class="filter-date-clear" type="button" aria-label="予定開始 Fromをクリア" @click="clearDraftDate('planned_start_from')">×</button>
+                            </span>
                             <span class="filter-date-sep">〜</span>
-                            <input type="date" v-model="draftFilters.planned_start_to">
+                            <span class="filter-date-control">
+                                <input type="date" v-model="draftFilters.planned_start_to">
+                                <button v-if="draftFilters.planned_start_to" class="filter-date-clear" type="button" aria-label="予定開始 Toをクリア" @click="clearDraftDate('planned_start_to')">×</button>
+                            </span>
                         </div>
                     </div>
 
                     <div class="filter-field filter-date-range">
                         <span>予定終了</span>
                         <div class="filter-date-inputs">
-                            <input type="date" v-model="draftFilters.planned_end_from">
+                            <span class="filter-date-control">
+                                <input type="date" v-model="draftFilters.planned_end_from">
+                                <button v-if="draftFilters.planned_end_from" class="filter-date-clear" type="button" aria-label="予定終了 Fromをクリア" @click="clearDraftDate('planned_end_from')">×</button>
+                            </span>
                             <span class="filter-date-sep">〜</span>
-                            <input type="date" v-model="draftFilters.planned_end_to">
+                            <span class="filter-date-control">
+                                <input type="date" v-model="draftFilters.planned_end_to">
+                                <button v-if="draftFilters.planned_end_to" class="filter-date-clear" type="button" aria-label="予定終了 Toをクリア" @click="clearDraftDate('planned_end_to')">×</button>
+                            </span>
                         </div>
                     </div>
 
                     <div class="filter-field filter-date-range">
                         <span>実績開始</span>
                         <div class="filter-date-inputs">
-                            <input type="date" v-model="draftFilters.actual_start_from">
+                            <span class="filter-date-control">
+                                <input type="date" v-model="draftFilters.actual_start_from">
+                                <button v-if="draftFilters.actual_start_from" class="filter-date-clear" type="button" aria-label="実績開始 Fromをクリア" @click="clearDraftDate('actual_start_from')">×</button>
+                            </span>
                             <span class="filter-date-sep">〜</span>
-                            <input type="date" v-model="draftFilters.actual_start_to">
+                            <span class="filter-date-control">
+                                <input type="date" v-model="draftFilters.actual_start_to">
+                                <button v-if="draftFilters.actual_start_to" class="filter-date-clear" type="button" aria-label="実績開始 Toをクリア" @click="clearDraftDate('actual_start_to')">×</button>
+                            </span>
                         </div>
                     </div>
 
                     <div class="filter-field filter-date-range">
                         <span>実績終了</span>
                         <div class="filter-date-inputs">
-                            <input type="date" v-model="draftFilters.actual_end_from">
+                            <span class="filter-date-control">
+                                <input type="date" v-model="draftFilters.actual_end_from">
+                                <button v-if="draftFilters.actual_end_from" class="filter-date-clear" type="button" aria-label="実績終了 Fromをクリア" @click="clearDraftDate('actual_end_from')">×</button>
+                            </span>
                             <span class="filter-date-sep">〜</span>
-                            <input type="date" v-model="draftFilters.actual_end_to">
+                            <span class="filter-date-control">
+                                <input type="date" v-model="draftFilters.actual_end_to">
+                                <button v-if="draftFilters.actual_end_to" class="filter-date-clear" type="button" aria-label="実績終了 Toをクリア" @click="clearDraftDate('actual_end_to')">×</button>
+                            </span>
                         </div>
                     </div>
                 </template>
             </div>
 
             <div class="issue-filter-actions">
-                <button class="btn btn-secondary" type="button" @click="resetFilters">
-                    絞り込み解除
-                </button>
+                <span
+                    class="filter-reset-wrapper"
+                    :title="resetFilterTitle"
+                >
+                    <button class="btn btn-secondary" type="button" :disabled="!hasResettableFilters" @click="resetFilters">
+                        絞り込み解除
+                    </button>
+                </span>
                 <button class="btn btn-primary" type="submit">
                     絞り込み
                 </button>
@@ -247,7 +292,20 @@
             <p v-if="issueStore.loading" class="empty-state">読み込み中です。</p>
             <template v-else>
                 <div class="issue-count-summary" aria-live="polite">
-                    表示件数: {{ visibleIssueCount }}件
+                    <span>表示件数: {{ visibleIssueCount }}件</span>
+                    <div v-if="activeFilterChips.length > 0" class="issue-filter-chips" aria-label="適用中の絞り込み条件">
+                        <button
+                            v-for="chip in activeFilterChips"
+                            :key="chip.key"
+                            class="issue-filter-chip"
+                            type="button"
+                            :aria-label="`${chip.label}を解除`"
+                            @click="removeFilterChip(chip)"
+                        >
+                            <span>{{ chip.label }}</span>
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
                 </div>
                 <p v-if="issueStore.issues.length === 0" class="empty-state">
                     {{ emptyStateMessage }}
@@ -382,6 +440,7 @@ import { useProductStore } from '../stores/products';
 import { useUserStore } from '../stores/users';
 
 const statuses = ['未着手', '作業中', 'テスト中', '完了', '保留'];
+const EMPTY_FILTER_VALUE = '__empty__';
 const filterStorageKey = 'issue-list-filters';
 const issueStore = useIssueStore();
 const productStore = useProductStore();
@@ -389,6 +448,7 @@ const engineerStore = useEngineerStore();
 const userStore = useUserStore();
 const errorMessage = ref('');
 const successMessage = ref('');
+const filterPanelRef = ref(null);
 const openFilterMenu = ref('');
 const isMainFiltersOpen = ref(true);
 const isDateFiltersOpen = ref(false);
@@ -396,6 +456,13 @@ let successMessageTimer = null;
 const flagOptions = [
     { value: 'overdue', label: '期限超過' },
     { value: 'due_soon', label: '期限近い' },
+    { value: 'none', label: 'フラグなし' },
+];
+const dateRanges = [
+    { label: '予定開始', from: 'planned_start_from', to: 'planned_start_to' },
+    { label: '予定終了', from: 'planned_end_from', to: 'planned_end_to' },
+    { label: '実績開始', from: 'actual_start_from', to: 'actual_start_to' },
+    { label: '実績終了', from: 'actual_end_from', to: 'actual_end_to' },
 ];
 
 const filters = reactive({
@@ -466,6 +533,13 @@ const sortedIssues = computed(() => {
 });
 const visibleIssueCount = computed(() => issueStore.issues.length);
 const hasActiveFilters = computed(() => Object.keys(filterParams()).length > 0);
+const activeFilterChips = computed(() => buildActiveFilterChips());
+const hasResettableFilters = computed(() => activeFilterChips.value.length > 0);
+const resetFilterTitle = computed(() => (
+    hasResettableFilters.value
+        ? '絞り込み条件を既定に戻します'
+        : '既定ではステータスが完了以外に絞り込まれているため、解除できません'
+));
 const emptyStateMessage = computed(() => (
     hasActiveFilters.value
         ? '条件に一致するISSUEはありません。絞り込み条件を変更してください。'
@@ -474,6 +548,7 @@ const emptyStateMessage = computed(() => (
 const sortAriaValue = computed(() => (sortState.direction === 'asc' ? 'ascending' : 'descending'));
 
 onMounted(async () => {
+    document.addEventListener('pointerdown', handleFilterPanelPointerDown);
     restoreFilters();
 
     await Promise.all([
@@ -485,11 +560,13 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+    document.removeEventListener('pointerdown', handleFilterPanelPointerDown);
     clearSuccessMessageTimer();
 });
 
 async function fetchIssues() {
     errorMessage.value = '';
+    normalizeAppliedFilters();
     saveFilters();
 
     try {
@@ -534,6 +611,10 @@ function filterParams() {
 }
 
 async function resetFilters() {
+    if (!hasResettableFilters.value) {
+        return;
+    }
+
     closeFilterMenu();
     applyFilters(defaultFilters());
     applyDraftFiltersOnly(defaultFilters());
@@ -576,6 +657,7 @@ function restoreFilters() {
     }
 
     applyDraftFiltersOnly(filterSnapshot());
+    isDateFiltersOpen.value = hasDetailedFilters(filters);
 }
 
 function saveFilters() {
@@ -606,7 +688,7 @@ function applyDraftFiltersOnly(nextFilters) {
 }
 
 function assignFilters(target, nextFilters) {
-    target.product_id = normalizeFilterArray(nextFilters.product_id);
+    target.product_id = normalizeFilterArray(nextFilters.product_id).filter((id) => id !== EMPTY_FILTER_VALUE);
     target.engineer_id = normalizeFilterArray(nextFilters.engineer_id);
     target.director_id = normalizeFilterArray(nextFilters.director_id);
     target.status = normalizeFilterArray(nextFilters.status).filter((status) => statuses.includes(status));
@@ -635,7 +717,19 @@ function assignFilters(target, nextFilters) {
         target[key] = (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : '';
     }
 
-    target.flags = normalizeFilterArray(nextFilters.flags).filter((f) => ['overdue', 'due_soon'].includes(f));
+    target.flags = normalizeFilterArray(nextFilters.flags).filter((f) => ['overdue', 'due_soon', 'none'].includes(f));
+}
+
+function normalizeAppliedFilters() {
+    normalizeAllSelection(filters, 'product_id', productStore.products, false);
+    normalizeAllSelection(filters, 'engineer_id', engineerStore.engineers, true);
+    normalizeAllSelection(filters, 'director_id', userStore.users, true);
+
+    if (isAllFlagSelection(filters.flags)) {
+        filters.flags = [];
+    }
+
+    applyDraftFiltersOnly(filterSnapshot());
 }
 
 function filterSnapshot(source = filters) {
@@ -665,14 +759,52 @@ function closeFilterMenu() {
     openFilterMenu.value = '';
 }
 
+function handleFilterPanelPointerDown(event) {
+    if (!openFilterMenu.value) {
+        return;
+    }
+
+    if (!(event.target instanceof Element)) {
+        closeFilterMenu();
+        return;
+    }
+
+    if (event.target.closest('.filter-menu, .filter-select-button')) {
+        return;
+    }
+
+    closeFilterMenu();
+}
+
+function toggleMainFilters() {
+    closeFilterMenu();
+    isMainFiltersOpen.value = !isMainFiltersOpen.value;
+}
+
+function toggleDateFilters() {
+    closeFilterMenu();
+    isDateFiltersOpen.value = !isDateFiltersOpen.value;
+}
+
 function clearDraftSelection(key) {
     draftFilters[key] = [];
 }
 
 async function applyDraftFilters() {
+    const dateError = dateRangeError(draftFilters);
+
+    if (dateError) {
+        errorMessage.value = dateError;
+        return;
+    }
+
     closeFilterMenu();
     applyFilters(filterSnapshot(draftFilters));
     await fetchIssues();
+}
+
+function clearDraftDate(key) {
+    draftFilters[key] = '';
 }
 
 function normalizeFilterArray(value) {
@@ -695,13 +827,15 @@ function toggleDraftSelection(key, value) {
     selected.splice(index, 1);
 }
 
-function selectedOptionLabel(selectedIds, options) {
-    if (selectedIds.length === 0 || selectedIds.length === options.length) {
+function selectedOptionLabel(selectedIds, options, emptyLabel = '未割当', includesEmpty = false) {
+    if (selectedIds.length === 0 || isAllOptionSelection(selectedIds, options, includesEmpty)) {
         return 'すべて';
     }
 
     return selectedIds.map((id) => (
-        options.find((option) => String(option.id) === String(id))?.name ?? `ID:${id}`
+        id === EMPTY_FILTER_VALUE
+            ? emptyLabel
+            : options.find((option) => String(option.id) === String(id))?.name ?? `ID:${id}`
     )).join('、');
 }
 
@@ -710,11 +844,15 @@ function selectedStatusLabel(selectedStatuses) {
         return 'すべて';
     }
 
+    if (isDefaultStatusSelection(selectedStatuses)) {
+        return '完了以外';
+    }
+
     return selectedStatuses.join('、');
 }
 
 function selectedFlagLabel(selectedFlags) {
-    if (selectedFlags.length === 0 || selectedFlags.length === flagOptions.length) {
+    if (selectedFlags.length === 0 || isAllFlagSelection(selectedFlags)) {
         return 'すべて';
     }
 
@@ -730,7 +868,159 @@ function flagLabel(flag) {
         return '期限近い';
     }
 
+    if (flag === 'none') {
+        return 'フラグなし';
+    }
+
     return flag;
+}
+
+async function removeFilterChip(chip) {
+    if (chip.type === 'array') {
+        filters[chip.field] = chip.field === 'status' ? defaultStatuses() : [];
+    }
+
+    if (chip.type === 'mode') {
+        filters.mode = 'all';
+    }
+
+    if (chip.type === 'date_range') {
+        filters[chip.from] = '';
+        filters[chip.to] = '';
+    }
+
+    applyDraftFiltersOnly(filterSnapshot());
+    saveFilters();
+    await fetchIssues();
+}
+
+function buildActiveFilterChips() {
+    const chips = [];
+
+    pushArrayChip(chips, 'product_id', 'プロダクト', selectedOptionLabel(filters.product_id, productStore.products, '未設定'), false);
+    pushArrayChip(chips, 'engineer_id', 'エンジニア', selectedOptionLabel(filters.engineer_id, engineerStore.engineers, '未割当', true), true);
+    pushArrayChip(chips, 'director_id', 'ディレクター', selectedOptionLabel(filters.director_id, userStore.users, '未割当', true), true);
+
+    if (!isDefaultStatusSelection(filters.status)) {
+        if (filters.status.length === 0) {
+            chips.push({
+                key: 'status',
+                type: 'array',
+                field: 'status',
+                label: 'ステータス: すべて',
+            });
+        } else {
+            pushArrayChip(chips, 'status', 'ステータス', selectedStatusLabel(filters.status));
+        }
+    }
+
+    if (filters.mode !== 'all') {
+        chips.push({
+            key: 'mode',
+            type: 'mode',
+            label: `管理表: ${filters.mode === 'managed' ? '表示中のみ' : '未追加のみ'}`,
+        });
+    }
+
+    for (const range of dateRanges) {
+        const from = filters[range.from];
+        const to = filters[range.to];
+
+        if (from || to) {
+            chips.push({
+                key: `${range.from}:${range.to}`,
+                type: 'date_range',
+                from: range.from,
+                to: range.to,
+                label: `${range.label}: ${from || '指定なし'}〜${to || '指定なし'}`,
+            });
+        }
+    }
+
+    if (!isAllFlagSelection(filters.flags)) {
+        pushArrayChip(chips, 'flags', 'フラグ', selectedFlagLabel(filters.flags));
+    }
+
+    return chips;
+}
+
+function pushArrayChip(chips, field, label, valueLabel, includesEmpty = false) {
+    if (filters[field].length === 0) {
+        return;
+    }
+
+    if (field !== 'status') {
+        const optionsByField = {
+            product_id: productStore.products,
+            engineer_id: engineerStore.engineers,
+            director_id: userStore.users,
+        };
+
+        if (isAllOptionSelection(filters[field], optionsByField[field] ?? [], includesEmpty)) {
+            return;
+        }
+    }
+
+    chips.push({
+        key: field,
+        type: 'array',
+        field,
+        label: `${label}: ${valueLabel}`,
+    });
+}
+
+function normalizeAllSelection(target, field, options, includesEmpty) {
+    if (isAllOptionSelection(target[field], options, includesEmpty)) {
+        target[field] = [];
+    }
+}
+
+function isAllOptionSelection(selectedIds, options, includesEmpty) {
+    if (options.length === 0) {
+        return false;
+    }
+
+    const expectedValues = options.map((option) => String(option.id));
+
+    if (includesEmpty) {
+        expectedValues.push(EMPTY_FILTER_VALUE);
+    }
+
+    return hasSameValues(selectedIds, expectedValues);
+}
+
+function isAllFlagSelection(selectedFlags) {
+    return hasSameValues(selectedFlags, flagOptions.map((flag) => flag.value));
+}
+
+function isDefaultStatusSelection(selectedStatuses) {
+    return hasSameValues(selectedStatuses, defaultStatuses());
+}
+
+function hasSameValues(left, right) {
+    if (left.length !== right.length) {
+        return false;
+    }
+
+    const rightValues = new Set(right.map((value) => String(value)));
+
+    return left.every((value) => rightValues.has(String(value)));
+}
+
+function hasDetailedFilters(source) {
+    return source.director_id.length > 0
+        || source.flags.length > 0
+        || dateRanges.some((range) => source[range.from] || source[range.to]);
+}
+
+function dateRangeError(source) {
+    for (const range of dateRanges) {
+        if (source[range.from] && source[range.to] && source[range.from] > source[range.to]) {
+            return `${range.label}はFromがTo以前になるように指定してください。`;
+        }
+    }
+
+    return '';
 }
 
 function toggleSort(key) {
@@ -837,8 +1127,8 @@ async function updateSchedule(issue, patch) {
         await issueStore.updateSchedule(issue.id, patch);
         showSuccessMessage('スケジュールを更新しました。');
     } catch (error) {
-        errorMessage.value = formatError(error, 'スケジュールの更新に失敗しました。');
         await fetchIssues();
+        errorMessage.value = formatError(error, 'スケジュールの更新に失敗しました。');
     }
 }
 

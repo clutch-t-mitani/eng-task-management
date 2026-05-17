@@ -133,6 +133,43 @@ class IssueManagementTest extends TestCase
             ->assertJsonPath('0.id', $working->id);
     }
 
+    public function test_can_filter_issues_by_empty_assignees(): void
+    {
+        $actor = User::factory()->create();
+        $engineer = Engineer::query()->create(['name' => '山田 太郎', 'display_order' => 1]);
+        $director = User::factory()->create(['name' => '田中 美咲']);
+
+        $emptyAssignee = $this->createIssue(['github_issue_number' => 211]);
+        $assignedEngineer = $this->createIssue([
+            'engineer_id' => $engineer->id,
+            'director_id' => $director->id,
+            'github_issue_number' => 212,
+        ]);
+        $this->createIssue([
+            'engineer_id' => $engineer->id,
+            'director_id' => $director->id,
+            'github_issue_number' => 213,
+        ]);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?engineer_id=__empty__')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $emptyAssignee->id);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?director_id=__empty__')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $emptyAssignee->id);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?'.http_build_query([
+            'engineer_id' => [$engineer->id, '__empty__'],
+        ]))
+            ->assertOk()
+            ->assertJsonCount(3)
+            ->assertJsonPath('0.id', $emptyAssignee->id)
+            ->assertJsonPath('1.id', $assignedEngineer->id);
+    }
+
     public function test_issue_index_rejects_invalid_multi_filter_values(): void
     {
         $actor = User::factory()->create();
@@ -281,6 +318,68 @@ class IssueManagementTest extends TestCase
             ->assertJsonValidationErrors(['planned_end']);
     }
 
+    public function test_schedule_update_rejects_dates_that_end_before_start(): void
+    {
+        $actor = User::factory()->create();
+        $issue = $this->createIssue();
+        $issue->schedule()->create([
+            'planned_start' => '2026-05-10',
+            'planned_end' => '2026-05-20',
+            'actual_start' => '2026-05-11',
+            'actual_end' => '2026-05-18',
+        ]);
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
+            'planned_start' => '2026-05-21',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['planned_end']);
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
+            'planned_end' => '2026-05-09',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['planned_end']);
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
+            'actual_start' => '2026-05-19',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['actual_end']);
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
+            'actual_end' => '2026-05-10',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['actual_end']);
+    }
+
+    public function test_schedule_update_allows_valid_date_order_and_null_clears(): void
+    {
+        $actor = User::factory()->create();
+        $issue = $this->createIssue();
+        $issue->schedule()->create([
+            'planned_start' => '2026-05-10',
+            'planned_end' => '2026-05-20',
+            'actual_start' => '2026-05-11',
+            'actual_end' => '2026-05-18',
+        ]);
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
+            'planned_start' => '2026-05-09',
+            'planned_end' => '2026-05-21',
+            'actual_start' => '2026-05-12',
+            'actual_end' => '2026-05-19',
+        ])->assertOk()
+            ->assertJsonPath('schedule.planned_start', '2026-05-09')
+            ->assertJsonPath('schedule.planned_end', '2026-05-21')
+            ->assertJsonPath('schedule.actual_start', '2026-05-12')
+            ->assertJsonPath('schedule.actual_end', '2026-05-19');
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
+            'planned_end' => null,
+            'actual_end' => null,
+        ])->assertOk()
+            ->assertJsonPath('schedule.planned_end', null)
+            ->assertJsonPath('schedule.actual_end', null);
+    }
+
     public function test_can_filter_issues_by_date_ranges(): void
     {
         $actor = User::factory()->create();
@@ -366,6 +465,31 @@ class IssueManagementTest extends TestCase
             ->assertJsonCount(2);
     }
 
+    public function test_can_filter_issues_by_no_flags(): void
+    {
+        Carbon::setTestNow('2026-05-10 09:00:00');
+        $actor = User::factory()->create();
+        $product = Product::query()->create(['name' => 'Product A', 'display_order' => 1]);
+
+        $normal = $this->createIssue(['product_id' => $product->id, 'status' => '未着手', 'github_issue_number' => 511]);
+        $normal->schedule()->create(['planned_end' => '2026-06-01', 'actual_end' => null]);
+
+        $done = $this->createIssue(['product_id' => $product->id, 'status' => '完了', 'github_issue_number' => 512]);
+        $done->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
+
+        $overdue = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 513]);
+        $overdue->schedule()->create(['planned_end' => '2026-05-07', 'actual_end' => null]);
+
+        $dueSoon = $this->createIssue(['product_id' => $product->id, 'status' => '作業中', 'github_issue_number' => 514]);
+        $dueSoon->schedule()->create(['planned_end' => '2026-05-12', 'actual_end' => null]);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues?flags[]=none')
+            ->assertOk()
+            ->assertJsonCount(2)
+            ->assertJsonPath('0.id', $normal->id)
+            ->assertJsonPath('1.id', $done->id);
+    }
+
     public function test_date_filter_validation_rejects_invalid_format(): void
     {
         $actor = User::factory()->create();
@@ -377,6 +501,22 @@ class IssueManagementTest extends TestCase
         $this->actingAs($actor)->getJson('/api/v1/issues?flags[]=invalid_flag')
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['flags.0']);
+    }
+
+    public function test_date_filter_validation_rejects_reversed_ranges(): void
+    {
+        $actor = User::factory()->create();
+
+        foreach ([
+            ['planned_start_from' => '2026-05-02', 'planned_start_to' => '2026-05-01'],
+            ['planned_end_from' => '2026-05-02', 'planned_end_to' => '2026-05-01'],
+            ['actual_start_from' => '2026-05-02', 'actual_start_to' => '2026-05-01'],
+            ['actual_end_from' => '2026-05-02', 'actual_end_to' => '2026-05-01'],
+        ] as $params) {
+            $this->actingAs($actor)->getJson('/api/v1/issues?'.http_build_query($params))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors([array_key_last($params)]);
+        }
     }
 
     public function test_development_seeder_adds_github_imported_issues_with_schedules(): void
