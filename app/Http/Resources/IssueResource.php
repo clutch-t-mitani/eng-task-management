@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\GitHubIssueState;
 use App\Enums\IssueStatus;
 use App\Models\Engineer;
 use App\Models\Issue;
@@ -30,7 +31,7 @@ class IssueResource extends JsonResource
             'title' => $this->title,
             'github_url' => $this->github_url,
             'github_issue_number' => $this->github_issue_number,
-            'github_state' => $this->github_state,
+            'github_state' => $this->github_state instanceof GitHubIssueState ? $this->github_state->value : $this->github_state,
             'github_synced_at' => $this->github_synced_at?->toJSON(),
             'status_id' => $this->status_id,
             'status_label' => IssueStatus::tryFrom((int) $this->status_id)?->label(),

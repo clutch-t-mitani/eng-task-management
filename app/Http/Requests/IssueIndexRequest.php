@@ -2,14 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Constants\IssueFilters;
 use App\Enums\IssueStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class IssueIndexRequest extends FormRequest
 {
-    public const EMPTY_FILTER_VALUE = '__empty__';
-
     public function authorize(): bool
     {
         return true;
@@ -56,7 +55,7 @@ class IssueIndexRequest extends FormRequest
             'engineer_id' => ['nullable', 'array'],
             'engineer_id.*' => [
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value === self::EMPTY_FILTER_VALUE) {
+                    if ($value === IssueFilters::EMPTY_FILTER_VALUE) {
                         return;
                     }
 
@@ -73,7 +72,7 @@ class IssueIndexRequest extends FormRequest
             'director_id' => ['nullable', 'array'],
             'director_id.*' => [
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value === self::EMPTY_FILTER_VALUE) {
+                    if ($value === IssueFilters::EMPTY_FILTER_VALUE) {
                         return;
                     }
 
