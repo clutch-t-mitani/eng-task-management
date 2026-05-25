@@ -2,48 +2,64 @@
   <div class="filter-bar">
     <div class="filter-group">
       <label>プロダクト</label>
-      <select v-model="localFilters.product_id" @change="emit">
-        <option :value="null">すべて</option>
-        <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
+      <select :value="filterStore.product_id ?? ''" @change="setNumberFilter('product_id', $event.target.value)">
+        <option value="">すべて</option>
+        <option v-for="product in productStore.products" :key="product.id" :value="product.id">
+          {{ product.name }}
+        </option>
       </select>
     </div>
     <div class="filter-group">
-      <label>担当者</label>
-      <select v-model="localFilters.member_id" @change="emit">
-        <option :value="null">すべて</option>
-        <option v-for="m in members" :key="m.id" :value="m.id">{{ m.name }}</option>
+      <label>ディレクター</label>
+      <select :value="filterStore.director_id ?? ''" @change="setNumberFilter('director_id', $event.target.value)">
+        <option value="">すべて</option>
+        <option v-for="user in userStore.users" :key="user.id" :value="user.id">
+          {{ user.name }}
+        </option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>エンジニア</label>
+      <select :value="filterStore.engineer_id ?? ''" @change="setNumberFilter('engineer_id', $event.target.value)">
+        <option value="">すべて</option>
+        <option v-for="engineer in engineerStore.engineers" :key="engineer.id" :value="engineer.id">
+          {{ engineer.name }}
+        </option>
       </select>
     </div>
     <div class="filter-group">
       <label>ステータス</label>
-      <select v-model="localFilters.status_id" @change="emit">
+      <select :value="filterStore.status_id" @change="setNumberFilter('status_id', $event.target.value, '')">
         <option value="">すべて</option>
-        <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.label }}</option>
+        <option v-for="status in statuses" :key="status.id" :value="status.id">{{ status.label }}</option>
       </select>
     </div>
-    <button class="btn-reset" @click="reset">リセット</button>
+    <button class="btn-reset" type="button" @click="filterStore.reset()">リセット</button>
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue'
-import { products, members } from '../data/mockData.js'
-import { ISSUE_STATUSES } from '../constants/issues.js'
+import { onMounted } from 'vue';
+import { ISSUE_STATUSES } from '../constants/issues';
+import { useEngineerStore } from '../stores/engineers';
+import { useFilterStore } from '../stores/filters';
+import { useProductStore } from '../stores/products';
+import { useUserStore } from '../stores/users';
 
-const emits = defineEmits(['change'])
-const statuses = ISSUE_STATUSES
+const filterStore = useFilterStore();
+const productStore = useProductStore();
+const engineerStore = useEngineerStore();
+const userStore = useUserStore();
+const statuses = ISSUE_STATUSES;
 
-const localFilters = reactive({ product_id: null, member_id: null, status_id: '' })
+onMounted(() => {
+  if (productStore.products.length === 0) productStore.fetchProducts();
+  if (engineerStore.engineers.length === 0) engineerStore.fetchEngineers();
+  if (userStore.users.length === 0) userStore.fetchUsers();
+});
 
-function emit() {
-  emits('change', { ...localFilters })
-}
-
-function reset() {
-  localFilters.product_id = null
-  localFilters.member_id = null
-  localFilters.status_id = ''
-  emit()
+function setNumberFilter(key, value, emptyValue = null) {
+  filterStore.setFilter({ [key]: value === '' ? emptyValue : Number(value) });
 }
 </script>
 

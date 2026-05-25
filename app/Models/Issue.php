@@ -69,6 +69,14 @@ class Issue extends Model
         return $this->hasOne(IssueSchedule::class);
     }
 
+    /**
+     * @return HasOne<GroupIssue, $this>
+     */
+    public function groupIssue(): HasOne
+    {
+        return $this->hasOne(GroupIssue::class);
+    }
+
     public function isOverdue(?IssueSchedule $schedule = null): bool
     {
         $schedule ??= $this->schedule;

@@ -20,4 +20,12 @@ class Product extends Model
     {
         return $this->hasMany(Issue::class);
     }
+
+    /**
+     * @return HasMany<Group, $this>
+     */
+    public function groups(): HasMany
+    {
+        return $this->hasMany(Group::class);
+    }
 }

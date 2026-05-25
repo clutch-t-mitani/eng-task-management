@@ -31,6 +31,7 @@ class UpdateIssueRequest extends FormRequest
             ],
             'status_id' => ['sometimes', 'required', 'integer', Rule::in(IssueStatus::values())],
             'is_managed' => ['sometimes', 'required', 'boolean'],
+            'group_id' => ['sometimes', 'nullable', 'integer', Rule::exists('groups', 'id')],
         ];
     }
 }

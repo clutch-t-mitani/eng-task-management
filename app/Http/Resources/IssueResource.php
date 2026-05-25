@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Enums\GitHubIssueState;
 use App\Enums\IssueStatus;
 use App\Models\Engineer;
+use App\Models\GroupIssue;
 use App\Models\Issue;
 use App\Models\IssueSchedule;
 use App\Models\User;
@@ -25,6 +26,9 @@ class IssueResource extends JsonResource
         $issue = $this->resource;
         $schedule = $this->whenLoaded('schedule');
         $loadedSchedule = $schedule instanceof IssueSchedule ? $schedule : null;
+        $groupIssue = $this->whenLoaded('groupIssue');
+        $loadedGroupIssue = $groupIssue instanceof GroupIssue ? $groupIssue : null;
+        $group = $loadedGroupIssue?->relationLoaded('group') ? $loadedGroupIssue->group : null;
 
         return [
             'id' => $this->id,
@@ -38,6 +42,14 @@ class IssueResource extends JsonResource
             'is_managed' => $this->is_managed,
             'display_order' => $this->display_order,
             'product_id' => $this->product_id,
+            'group_id' => $group?->id,
+            'group' => $group ? [
+                'id' => $group->id,
+                'name' => $group->name,
+                'release_date' => $group->release_date?->toDateString(),
+                'display_order' => $group->display_order,
+                'product_id' => $group->product_id,
+            ] : null,
             'director' => $this->person($this->whenLoaded('director')),
             'engineer' => $this->person($this->whenLoaded('engineer')),
             'schedule' => $loadedSchedule ? $this->schedulePayload($loadedSchedule) : null,
