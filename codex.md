@@ -19,12 +19,14 @@
 - Laravel 11 の標準構成と命名に従う。
 - PHP コードは Laravel Pint のスタイルに合わせる。
 - Controller は薄く保ち、複雑な業務処理は `app/Services` に分離する。
+- Controller には業務ルール、並び替え検証、複数モデル更新、削除可否判定、レスポンス用の独自シリアライズを増やさない。必要な処理は Service、Form Request、Resource に分ける。
 - 入力バリデーションは Form Request を優先する。
 - API レスポンスは Resource クラスを優先し、画面に不要な内部構造を返さない。
 - DB 更新は Eloquent のリレーションを活用し、手続き的な SQL 直書きは必要な場合だけにする。
 - 複数テーブルを更新する処理、並び替え、GitHub 同期の upsert は transaction を使う。
 - 認証が必要な API は `auth:sanctum` 配下に置く。Webhook のように外部から呼ばれる API は署名検証など別の認証手段を必ず持たせる。
 - 例外は握りつぶさない。ユーザー向けエラー、ログ、HTTP ステータスの意味を分ける。
+- ステータス値、GitHub 状態、特殊なフィルター値、共通の判定しきい値などのルール値は、文字列・数値を各所に直書きせず、必要に応じて backed enum、Const、共通 helper に集約する。
 
 ### Vue / JavaScript
 
@@ -35,6 +37,7 @@
 - D&D やインライン編集は楽観的更新をしてよいが、失敗時に再取得または明示的なロールバックを行う。
 - `v-for` の key は安定した ID を使う。index key は並び替えや更新が絡む UI では使わない。
 - 日付、工数、ステータスなどの表示ロジックは重複させず、必要に応じて composable や helper に切り出す。
+- API と同じ意味を持つステータスID、空フィルター値、GitHub 状態などは `resources/js` 配下の constants を使い、画面やコンポーネントに数値・文字列を散らさない。
 
 ### CSS / UI
 
@@ -74,6 +77,7 @@
 
 ## DB / Migration
 
+- migration ファイルは一度実行された履歴として扱い、既存ファイルを後から編集しない。カラム追加、削除、型変更、制約変更が必要な場合は新しい migration ファイルを作成する。
 - migration は後方互換性と既存データを意識する。
 - 外部キー、unique 制約、index は検索条件と整合性に合わせて定義する。
 - 並び順カラムは `display_order` を使い、並び替え API では配列順に基づいて一括更新する。
@@ -139,6 +143,9 @@ Laravel の統合開発コマンドを使う場合:
 - GitHub 由来項目とアプリ管理項目の責務を混ぜていないか。
 - 認証、CSRF、Webhook 署名、秘匿情報の扱いに抜けがないか。
 - transaction が必要な更新で部分更新のリスクが残っていないか。
+- Controller が Fat Controller 化していないか。業務ルール、永続化手順、共通検証、Resource 相当の整形は Service / Request / Resource に分かれているか。
+- ルール値がハードコーディングされていないか。追加・変更されうる値は Enum / Const / constants に寄せられているか。
+- DB変更で既存 migration を編集していないか。カラム追加、削除、型変更、制約変更は新しい migration として履歴が残っているか。
 - 一覧 API で N+1 が起きないか。
 - 楽観的 UI 更新の失敗時にユーザーが復旧できるか。
 - ソフトデリート済み関連データの表示で落ちないか。

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Constants\IssueFilters;
+use App\Enums\GitHubIssueState;
 use App\Enums\IssueStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -11,8 +13,6 @@ use Illuminate\Support\Carbon;
 
 class Issue extends Model
 {
-    private const EMPTY_FILTER_VALUE = '__empty__';
-
     protected $fillable = [
         'title',
         'github_url',
@@ -32,6 +32,7 @@ class Issue extends Model
         return [
             'is_managed' => 'boolean',
             'status_id' => 'integer',
+            'github_state' => GitHubIssueState::class,
             'github_synced_at' => 'datetime',
         ];
     }
@@ -209,8 +210,8 @@ class Issue extends Model
     private function applyNullableFilterValue(Builder $query, string $column, mixed $value): Builder
     {
         $values = is_array($value) ? $value : [$value];
-        $hasEmptyFilter = in_array(self::EMPTY_FILTER_VALUE, $values, true);
-        $ids = array_values(array_filter($values, fn (mixed $item): bool => $item !== self::EMPTY_FILTER_VALUE));
+        $hasEmptyFilter = in_array(IssueFilters::EMPTY_FILTER_VALUE, $values, true);
+        $ids = array_values(array_filter($values, fn (mixed $item): bool => $item !== IssueFilters::EMPTY_FILTER_VALUE));
 
         return $query->where(function (Builder $q) use ($column, $hasEmptyFilter, $ids): void {
             if ($ids !== []) {

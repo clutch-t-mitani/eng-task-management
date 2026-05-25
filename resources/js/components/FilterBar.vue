@@ -27,9 +27,11 @@
 
 <script setup>
 import { reactive } from 'vue'
-import { products, members, statuses } from '../data/mockData.js'
+import { products, members } from '../data/mockData.js'
+import { ISSUE_STATUSES } from '../constants/issues.js'
 
 const emits = defineEmits(['change'])
+const statuses = ISSUE_STATUSES
 
 const localFilters = reactive({ product_id: null, member_id: null, status_id: '' })
 

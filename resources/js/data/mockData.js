@@ -93,13 +93,7 @@ export const issueSchedules = [
   { issue_id: 10, planned_start: '2026-05-10', actual_start: null, planned_end: '2026-05-25', actual_end: null },
 ]
 
-export const statuses = [
-  { id: 1, label: '未着手' },
-  { id: 2, label: '作業中' },
-  { id: 3, label: 'テスト中' },
-  { id: 4, label: '完了' },
-  { id: 5, label: '保留' },
-]
+export { ISSUE_STATUSES as statuses } from '../constants/issues.js'
 
 export function getMemberById(id) {
   return members.find(m => m.id === id)

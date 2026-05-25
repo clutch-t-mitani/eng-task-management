@@ -21,6 +21,7 @@
 <script setup>
 import { computed } from 'vue'
 import { statuses, getMemberById, getScheduleByIssueId, isOverdue, isDueSoon } from '../data/mockData.js'
+import { ISSUE_STATUS } from '../constants/issues.js'
 
 const props = defineProps({ issue: Object })
 defineEmits(['update-status'])
@@ -33,7 +34,7 @@ const soon = computed(() => isDueSoon(schedule.value))
 const rowClass = computed(() => ({
   'row-overdue': overdue.value,
   'row-soon': soon.value,
-  'row-done': props.issue.status_id === 4,
+  'row-done': props.issue.status_id === ISSUE_STATUS.DONE,
 }))
 </script>
 

@@ -438,17 +438,12 @@ import { useEngineerStore } from '../stores/engineers';
 import { useIssueStore } from '../stores/issues';
 import { useProductStore } from '../stores/products';
 import { useUserStore } from '../stores/users';
+import { ISSUE_FILTER_EMPTY_VALUE, ISSUE_STATUS, ISSUE_STATUSES } from '../constants/issues';
 
-const statuses = [
-    { id: 1, label: '未着手' },
-    { id: 2, label: '作業中' },
-    { id: 3, label: 'テスト中' },
-    { id: 4, label: '完了' },
-    { id: 5, label: '保留' },
-];
+const statuses = ISSUE_STATUSES;
 const statusIdsByLabel = Object.fromEntries(statuses.map((status) => [status.label, String(status.id)]));
-const DONE_STATUS_ID = 4;
-const EMPTY_FILTER_VALUE = '__empty__';
+const DONE_STATUS_ID = ISSUE_STATUS.DONE;
+const EMPTY_FILTER_VALUE = ISSUE_FILTER_EMPTY_VALUE;
 const filterStorageKey = 'issue-list-filters';
 const issueStore = useIssueStore();
 const productStore = useProductStore();

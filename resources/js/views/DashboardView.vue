@@ -43,14 +43,15 @@
 import { computed } from 'vue'
 import EngineerCard from '../components/EngineerCard.vue'
 import { issues, issueSchedules, members, isOverdue } from '../data/mockData.js'
+import { ISSUE_STATUS } from '../constants/issues.js'
 
 const allMembers = computed(() => members)
 const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
 
 const managedIssues = computed(() => issues.filter(i => i.is_managed))
 const totalIssues = computed(() => managedIssues.value.length)
-const doneIssues = computed(() => managedIssues.value.filter(i => i.status_id === 4).length)
-const wipIssues = computed(() => managedIssues.value.filter(i => i.status_id === 2).length)
+const doneIssues = computed(() => managedIssues.value.filter(i => i.status_id === ISSUE_STATUS.DONE).length)
+const wipIssues = computed(() => managedIssues.value.filter(i => i.status_id === ISSUE_STATUS.IN_PROGRESS).length)
 const completionRate = computed(() =>
   totalIssues.value === 0 ? 0 : Math.round((doneIssues.value / totalIssues.value) * 100)
 )

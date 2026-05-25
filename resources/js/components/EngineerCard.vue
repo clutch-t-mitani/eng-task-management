@@ -53,6 +53,7 @@
 <script setup>
 import { computed } from 'vue'
 import { issues, issueSchedules, isOverdue } from '../data/mockData.js'
+import { ISSUE_STATUS, ISSUE_STATUS_COLORS, ISSUE_STATUSES } from '../constants/issues.js'
 
 const props = defineProps({ member: Object })
 
@@ -61,8 +62,8 @@ const myIssues = computed(() =>
 )
 
 const totalIssues = computed(() => myIssues.value.length)
-const doneCount = computed(() => myIssues.value.filter(i => i.status_id === 4).length)
-const wipCount = computed(() => myIssues.value.filter(i => i.status_id === 2).length)
+const doneCount = computed(() => myIssues.value.filter(i => i.status_id === ISSUE_STATUS.DONE).length)
+const wipCount = computed(() => myIssues.value.filter(i => i.status_id === ISSUE_STATUS.IN_PROGRESS).length)
 const overdueCount = computed(() =>
   myIssues.value.filter(i => {
     const s = issueSchedules.find(sc => sc.issue_id === i.id)
@@ -73,12 +74,15 @@ const overdueCount = computed(() =>
 const initials = computed(() => props.member.name.charAt(0))
 
 const statusOrder = [
-  { id: 2, label: '作業中', color: '#63b3ed' },
-  { id: 3, label: 'テスト中', color: '#f6e05e' },
-  { id: 1, label: '未着手', color: '#e2e8f0' },
-  { id: 4, label: '完了', color: '#68d391' },
-  { id: 5, label: '保留', color: '#f6ad55' },
-]
+  ISSUE_STATUS.IN_PROGRESS,
+  ISSUE_STATUS.TESTING,
+  ISSUE_STATUS.TODO,
+  ISSUE_STATUS.DONE,
+  ISSUE_STATUS.ON_HOLD,
+].map(statusId => ({
+  ...ISSUE_STATUSES.find(status => status.id === statusId),
+  color: ISSUE_STATUS_COLORS[statusId],
+}))
 
 function countByStatus(statusId) {
   return myIssues.value.filter(i => i.status_id === statusId).length
@@ -90,7 +94,7 @@ function segmentWidth(statusId) {
 }
 
 function statusColor(statusId) {
-  return statusOrder.find(s => s.id === statusId)?.color ?? '#e2e8f0'
+  return ISSUE_STATUS_COLORS[statusId] ?? ISSUE_STATUS_COLORS[ISSUE_STATUS.TODO]
 }
 </script>
 
