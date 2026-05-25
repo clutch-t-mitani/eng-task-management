@@ -20,6 +20,12 @@ return [
 
     'default' => env('DB_CONNECTION', 'sqlite'),
 
+    'log_queries' => env('DB_QUERY_LOG_ENABLED', false),
+
+    'query_log_channel' => env('LOG_QUERY_CHANNEL', 'query'),
+
+    'query_log_max_binding_length' => env('LOG_QUERY_MAX_BINDING_LENGTH', 120),
+
     /*
     |--------------------------------------------------------------------------
     | Database Connections
