@@ -254,32 +254,28 @@ class DevelopmentSeeder extends Seeder
 
         $groups = [
             [
-                'product_name' => 'Product A',
                 'name' => '2026年4月リリース',
                 'release_date' => '2026-04-30',
                 'display_order' => 1,
                 'issue_numbers' => [101, 102, 103, 104],
             ],
             [
-                'product_name' => 'Product A',
                 'name' => '2026年5月リリース',
                 'release_date' => '2026-05-31',
                 'display_order' => 2,
-                'issue_numbers' => [105, 106, 301],
+                'issue_numbers' => [105, 106, 201, 301],
             ],
             [
-                'product_name' => 'Product B',
                 'name' => '管理画面改善',
                 'release_date' => '2026-05-31',
-                'display_order' => 1,
-                'issue_numbers' => [201, 202, 302],
+                'display_order' => 3,
+                'issue_numbers' => [202, 302],
             ],
         ];
 
         foreach ($groups as $groupData) {
             $group = Group::query()->updateOrCreate(
                 [
-                    'product_id' => $productByName[$groupData['product_name']],
                     'name' => $groupData['name'],
                 ],
                 [

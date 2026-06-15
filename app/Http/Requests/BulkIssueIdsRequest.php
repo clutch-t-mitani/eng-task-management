@@ -3,8 +3,9 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
-class StoreGroupRequest extends FormRequest
+class BulkIssueIdsRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -17,8 +18,8 @@ class StoreGroupRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:200'],
-            'release_date' => ['nullable', 'date_format:Y-m-d'],
+            'issue_ids' => ['required', 'array', 'min:1'],
+            'issue_ids.*' => ['integer', 'distinct', Rule::exists('issues', 'id')],
         ];
     }
 }

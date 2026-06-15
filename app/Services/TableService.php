@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Http\Resources\IssueResource;
 use App\Models\Group;
 use App\Models\Issue;
+use Illuminate\Support\Collection;
 
 class TableService
 {
@@ -15,30 +16,42 @@ class TableService
     public function table(array $filters): array
     {
         $groups = Group::query()
-            ->when($filters['product_id'] ?? null, function ($query, mixed $value) {
-                return is_array($value)
-                    ? $query->whereIn('product_id', $value)
-                    : $query->where('product_id', $value);
-            })
-            ->orderBy('product_id')
             ->orderBy('display_order')
             ->orderBy('id')
+            ->get();
+
+        $allGroupedIssues = Issue::query()
+            ->with(['director', 'engineer', 'product', 'schedule', 'groupIssue.group'])
+            ->managed()
+            ->applyFilters($filters)
+            ->whereHas('groupIssue')
+            ->join('group_issues', 'issues.id', '=', 'group_issues.issue_id')
+            ->orderBy('group_issues.display_order')
+            ->orderBy('issues.id')
+            ->select('issues.*')
             ->get()
-            ->map(function (Group $group) use ($filters): array {
+            ->groupBy(fn (Issue $issue): int => $issue->groupIssue->group_id);
+
+        $hasFilters = $this->hasActiveFilters($filters);
+
+        $groupsData = $groups
+            ->map(function (Group $group) use ($allGroupedIssues): array {
+                $issues = IssueResource::collection($allGroupedIssues->get($group->id, collect()))->resolve();
+
                 return [
                     'id' => $group->id,
                     'name' => $group->name,
                     'release_date' => $group->release_date?->toDateString(),
                     'display_order' => $group->display_order,
-                    'product_id' => $group->product_id,
-                    'issues' => IssueResource::collection($this->groupIssues($group, $filters))->resolve(),
+                    'issues' => $issues,
                 ];
             })
+            ->filter(fn (array $group): bool => ! $hasFilters || $group['issues'] !== [])
             ->values()
             ->all();
 
         return [
-            'groups' => $groups,
+            'groups' => $groupsData,
             'ungrouped_issues' => IssueResource::collection($this->ungroupedIssues($filters))->resolve(),
         ];
     }
@@ -46,33 +59,27 @@ class TableService
     /**
      * @param  array<string, mixed>  $filters
      */
-    private function groupIssues(Group $group, array $filters)
+    private function ungroupedIssues(array $filters): Collection
     {
         return Issue::query()
-            ->with(['director', 'engineer', 'schedule', 'groupIssue.group'])
+            ->with(['director', 'engineer', 'product', 'schedule', 'groupIssue.group'])
             ->managed()
             ->applyFilters($filters)
-            ->whereHas('groupIssue', fn ($query) => $query->where('group_id', $group->id))
-            ->join('group_issues', 'issues.id', '=', 'group_issues.issue_id')
-            ->orderBy('group_issues.display_order')
-            ->orderBy('issues.id')
-            ->select('issues.*')
+            ->doesntHave('groupIssue')
+            ->orderBy('display_order')
+            ->orderBy('id')
             ->get();
     }
 
     /**
      * @param  array<string, mixed>  $filters
      */
-    private function ungroupedIssues(array $filters)
+    private function hasActiveFilters(array $filters): bool
     {
-        return Issue::query()
-            ->with(['director', 'engineer', 'schedule', 'groupIssue.group'])
-            ->managed()
-            ->applyFilters($filters)
-            ->doesntHave('groupIssue')
-            ->orderBy('product_id')
-            ->orderBy('display_order')
-            ->orderBy('id')
-            ->get();
+        return collect($filters)->contains(
+            fn (mixed $value): bool => is_array($value)
+                ? $value !== []
+                : $value !== null && $value !== ''
+        );
     }
 }

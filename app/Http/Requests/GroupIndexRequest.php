@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class GroupIndexRequest extends FormRequest
 {
@@ -17,8 +16,6 @@ class GroupIndexRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'product_id' => ['nullable', 'integer', Rule::exists('products', 'id')],
-        ];
+        return [];
     }
 }

@@ -354,10 +354,14 @@
                                 <td>{{ productName(issue.product_id) }}</td>
                                 <td>
                                     <select
+                                        :class="{ 'deleted-assignee-select': issue.director?.deleted }"
                                         :value="issue.director?.id ?? ''"
                                         @change="updateIssue(issue, { director_id: normalizeNullableId($event.target.value) })"
                                     >
                                         <option value="">未割当</option>
+                                        <option v-if="issue.director?.deleted" class="deleted-assignee-option" :value="issue.director.id" disabled>
+                                            {{ issue.director.name }} (削除済)
+                                        </option>
                                         <option v-for="user in userStore.users" :key="user.id" :value="user.id">
                                             {{ user.name }}
                                         </option>
@@ -365,10 +369,14 @@
                                 </td>
                                 <td>
                                     <select
+                                        :class="{ 'deleted-assignee-select': issue.engineer?.deleted }"
                                         :value="issue.engineer?.id ?? ''"
                                         @change="updateIssue(issue, { engineer_id: normalizeNullableId($event.target.value) })"
                                     >
                                         <option value="">未割当</option>
+                                        <option v-if="issue.engineer?.deleted" class="deleted-assignee-option" :value="issue.engineer.id" disabled>
+                                            {{ issue.engineer.name }} (削除済)
+                                        </option>
                                         <option v-for="engineer in engineerStore.engineers" :key="engineer.id" :value="engineer.id">
                                             {{ engineer.name }}
                                         </option>

@@ -13,8 +13,6 @@ class GroupIssueService
 {
     public function add(Group $group, Issue $issue): Issue
     {
-        $this->assertSameProduct($group, $issue);
-
         DB::transaction(function () use ($group, $issue): void {
             $issue->update(['is_managed' => true]);
             $issue->groupIssue()->updateOrCreate(
@@ -26,7 +24,7 @@ class GroupIssueService
             );
         });
 
-        return $issue->load(['director', 'engineer', 'schedule', 'groupIssue.group']);
+        return $issue->load(['product', 'director', 'engineer', 'schedule', 'groupIssue.group']);
     }
 
     public function remove(Group $group, Issue $issue): void
@@ -43,38 +41,31 @@ class GroupIssueService
      */
     public function reorder(Group $group, array $orderedIds): Collection
     {
-        $expectedIds = $group->groupIssues()
+        $orderedIds = collect($orderedIds)->map(fn (mixed $id): int => (int) $id)->all();
+        $groupIssues = $group->groupIssues()
+            ->whereIn('issue_id', $orderedIds)
+            ->orderBy('display_order')
             ->orderBy('issue_id')
-            ->pluck('issue_id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->all();
-        $receivedIds = collect($orderedIds)->map(fn (mixed $id): int => (int) $id)->sort()->values()->all();
+            ->get();
 
-        if ($receivedIds !== $expectedIds) {
+        if ($groupIssues->count() !== count($orderedIds)) {
             throw ValidationException::withMessages([
-                'ordered_ids' => ['並び順にはグループ内のISSUE IDをすべて指定してください。'],
+                'ordered_ids' => ['並び順には対象グループに所属するISSUE IDを指定してください。'],
             ]);
         }
 
-        DB::transaction(function () use ($group, $orderedIds): void {
+        $displayOrders = $groupIssues->pluck('display_order')->sort()->values()->all();
+
+        DB::transaction(function () use ($group, $orderedIds, $displayOrders): void {
             foreach ($orderedIds as $index => $issueId) {
                 GroupIssue::query()
                     ->where('group_id', $group->id)
                     ->where('issue_id', $issueId)
-                    ->update(['display_order' => $index + 1]);
+                    ->update(['display_order' => $displayOrders[$index]]);
             }
         });
 
         return $group->groupIssues()->orderBy('display_order')->get();
-    }
-
-    private function assertSameProduct(Group $group, Issue $issue): void
-    {
-        if ((int) $group->product_id !== (int) $issue->product_id) {
-            throw ValidationException::withMessages([
-                'issue_id' => ['グループと同じプロダクトのISSUEを指定してください。'],
-            ]);
-        }
     }
 
     private function nextDisplayOrder(Group $group): int

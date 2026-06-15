@@ -18,7 +18,7 @@ class GroupController extends Controller
     public function index(GroupIndexRequest $request): JsonResponse
     {
         return response()->json(GroupResource::collection(
-            $this->groups->list($request->integer('product_id') ?: null)
+            $this->groups->list()
         )->resolve());
     }
 

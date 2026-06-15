@@ -45,6 +45,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('/groups/{group}/issues/{issue}', [GroupIssueController::class, 'remove'])->name('groups.issues.remove');
 
         Route::get('/issues', [IssueController::class, 'index'])->name('issues.index');
+        Route::patch('/issues/bulk/remove-from-managed', [IssueController::class, 'bulkRemoveFromManaged'])->name('issues.bulk-remove-from-managed');
+        Route::patch('/issues/bulk/group', [IssueController::class, 'bulkUpdateGroup'])->name('issues.bulk-group');
+        Route::patch('/issues/ungrouped/reorder', [IssueController::class, 'reorderUngrouped'])->name('issues.ungrouped.reorder');
         Route::get('/issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
         Route::put('/issues/{issue}', [IssueController::class, 'update'])->name('issues.update');
         Route::patch('/issues/{issue}/status', [IssueController::class, 'updateStatus'])->name('issues.status');

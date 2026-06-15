@@ -225,6 +225,55 @@ class IssueManagementTest extends TestCase
         ]);
     }
 
+    public function test_deleted_assignees_keep_their_names_and_can_be_replaced(): void
+    {
+        $actor = User::factory()->create();
+        $deletedDirector = User::factory()->create(['name' => '退職ディレクター']);
+        $deletedEngineer = Engineer::query()->create(['name' => '退職エンジニア', 'display_order' => 1]);
+        $replacementDirector = User::factory()->create(['name' => '後任ディレクター']);
+        $replacementEngineer = Engineer::query()->create(['name' => '後任エンジニア', 'display_order' => 2]);
+        $assignedIssue = $this->createIssue([
+            'director_id' => $deletedDirector->id,
+            'engineer_id' => $deletedEngineer->id,
+        ]);
+        $unassignedIssue = $this->createIssue(['github_issue_number' => 102]);
+
+        $deletedDirector->delete();
+        $deletedEngineer->delete();
+
+        $this->actingAs($actor)->getJson('/api/v1/users')
+            ->assertOk()
+            ->assertJsonMissing(['id' => $deletedDirector->id]);
+
+        $this->actingAs($actor)->getJson('/api/v1/engineers')
+            ->assertOk()
+            ->assertJsonMissing(['id' => $deletedEngineer->id]);
+
+        $this->actingAs($actor)->getJson('/api/v1/issues')
+            ->assertOk()
+            ->assertJsonPath('0.director.id', $deletedDirector->id)
+            ->assertJsonPath('0.director.name', '退職ディレクター')
+            ->assertJsonPath('0.director.deleted', true)
+            ->assertJsonPath('0.engineer.id', $deletedEngineer->id)
+            ->assertJsonPath('0.engineer.name', '退職エンジニア')
+            ->assertJsonPath('0.engineer.deleted', true);
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$unassignedIssue->id}", [
+            'director_id' => $deletedDirector->id,
+            'engineer_id' => $deletedEngineer->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['director_id', 'engineer_id']);
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$assignedIssue->id}", [
+            'director_id' => $replacementDirector->id,
+            'engineer_id' => $replacementEngineer->id,
+        ])->assertOk()
+            ->assertJsonPath('director.id', $replacementDirector->id)
+            ->assertJsonPath('director.deleted', false)
+            ->assertJsonPath('engineer.id', $replacementEngineer->id)
+            ->assertJsonPath('engineer.deleted', false);
+    }
+
     public function test_can_update_status_toggle_managed_remove_from_managed_and_update_schedule(): void
     {
         $actor = User::factory()->create();
@@ -381,6 +430,31 @@ class IssueManagementTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('schedule.planned_end', null)
             ->assertJsonPath('schedule.actual_end', null);
+    }
+
+    public function test_partial_schedule_updates_preserve_other_dates(): void
+    {
+        $actor = User::factory()->create();
+        $issue = $this->createIssue();
+        $issue->schedule()->create([
+            'planned_start' => '2026-05-10',
+            'planned_end' => '2026-05-20',
+            'actual_start' => null,
+            'actual_end' => null,
+        ]);
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
+            'planned_start' => '2026-05-09',
+        ])->assertOk()
+            ->assertJsonPath('schedule.planned_start', '2026-05-09')
+            ->assertJsonPath('schedule.planned_end', '2026-05-20');
+
+        $this->actingAs($actor)->putJson("/api/v1/issues/{$issue->id}/schedule", [
+            'actual_start' => '2026-05-11',
+        ])->assertOk()
+            ->assertJsonPath('schedule.planned_start', '2026-05-09')
+            ->assertJsonPath('schedule.planned_end', '2026-05-20')
+            ->assertJsonPath('schedule.actual_start', '2026-05-11');
     }
 
     public function test_can_filter_issues_by_date_ranges(): void

@@ -59,6 +59,15 @@ export const useIssueStore = defineStore('issues', {
             return data;
         },
 
+        async bulkRemoveFromManaged(issueIds) {
+            await axios.patch('/api/v1/issues/bulk/remove-from-managed', { issue_ids: issueIds });
+            this.issues = this.issues.filter((issue) => !issueIds.includes(issue.id));
+        },
+
+        async bulkUpdateGroup(issueIds, groupId) {
+            await axios.patch('/api/v1/issues/bulk/group', { issue_ids: issueIds, group_id: groupId });
+        },
+
         async updateSchedule(id, schedule) {
             const { data } = await axios.put(`/api/v1/issues/${id}/schedule`, schedule);
             this.replaceIssue(data);

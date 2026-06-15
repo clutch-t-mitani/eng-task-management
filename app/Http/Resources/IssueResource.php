@@ -42,14 +42,9 @@ class IssueResource extends JsonResource
             'is_managed' => $this->is_managed,
             'display_order' => $this->display_order,
             'product_id' => $this->product_id,
+            'product_name' => $this->whenLoaded('product', fn () => $this->product?->name),
             'group_id' => $group?->id,
-            'group' => $group ? [
-                'id' => $group->id,
-                'name' => $group->name,
-                'release_date' => $group->release_date?->toDateString(),
-                'display_order' => $group->display_order,
-                'product_id' => $group->product_id,
-            ] : null,
+            'group' => $group ? GroupResource::make($group)->resolve() : null,
             'director' => $this->person($this->whenLoaded('director')),
             'engineer' => $this->person($this->whenLoaded('engineer')),
             'schedule' => $loadedSchedule ? $this->schedulePayload($loadedSchedule) : null,
@@ -69,7 +64,7 @@ class IssueResource extends JsonResource
 
         return [
             'id' => $person->id,
-            'name' => $person->trashed() ? '削除済みユーザー' : $person->name,
+            'name' => $person->name,
             'deleted' => $person->trashed(),
         ];
     }

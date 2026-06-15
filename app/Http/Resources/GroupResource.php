@@ -21,7 +21,6 @@ class GroupResource extends JsonResource
             'name' => $this->name,
             'release_date' => $this->release_date?->toDateString(),
             'display_order' => $this->display_order,
-            'product_id' => $this->product_id,
         ];
     }
 }

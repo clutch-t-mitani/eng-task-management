@@ -12,11 +12,9 @@ class GroupService
     /**
      * @return Collection<int, Group>
      */
-    public function list(?int $productId = null): Collection
+    public function list(): Collection
     {
         return Group::query()
-            ->when($productId, fn ($query) => $query->where('product_id', $productId))
-            ->orderBy('product_id')
             ->orderBy('display_order')
             ->orderBy('id')
             ->get();
@@ -29,7 +27,7 @@ class GroupService
     {
         return Group::query()->create([
             ...$attributes,
-            'display_order' => $this->nextDisplayOrder((int) $attributes['product_id']),
+            'display_order' => $this->nextDisplayOrder(),
         ]);
     }
 
@@ -54,41 +52,32 @@ class GroupService
      */
     public function reorder(array $orderedIds): Collection
     {
-        $groups = Group::query()->whereIn('id', $orderedIds)->get();
-        $productIds = $groups->pluck('product_id')->unique()->values();
-
-        if ($groups->count() !== count($orderedIds) || $productIds->count() !== 1) {
-            throw ValidationException::withMessages([
-                'ordered_ids' => ['同一プロダクトの登録済みグループIDをすべて指定してください。'],
-            ]);
-        }
-
-        $productId = (int) $productIds->first();
-        $expectedIds = Group::query()
-            ->where('product_id', $productId)
+        $orderedIds = collect($orderedIds)->map(fn (mixed $id): int => (int) $id)->all();
+        $groups = Group::query()
+            ->whereIn('id', $orderedIds)
+            ->orderBy('display_order')
             ->orderBy('id')
-            ->pluck('id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->all();
-        $receivedIds = collect($orderedIds)->map(fn (mixed $id): int => (int) $id)->sort()->values()->all();
+            ->get();
 
-        if ($receivedIds !== $expectedIds) {
+        if ($groups->count() !== count($orderedIds)) {
             throw ValidationException::withMessages([
-                'ordered_ids' => ['同一プロダクトの登録済みグループIDをすべて指定してください。'],
+                'ordered_ids' => ['登録済みグループIDを指定してください。'],
             ]);
         }
 
-        DB::transaction(function () use ($orderedIds): void {
+        $displayOrders = $groups->pluck('display_order')->sort()->values()->all();
+
+        DB::transaction(function () use ($orderedIds, $displayOrders): void {
             foreach ($orderedIds as $index => $id) {
-                Group::query()->whereKey($id)->update(['display_order' => $index + 1]);
+                Group::query()->whereKey($id)->update(['display_order' => $displayOrders[$index]]);
             }
         });
 
-        return $this->list($productId);
+        return $this->list();
     }
 
-    private function nextDisplayOrder(int $productId): int
+    private function nextDisplayOrder(): int
     {
-        return (int) Group::query()->where('product_id', $productId)->max('display_order') + 1;
+        return (int) Group::query()->max('display_order') + 1;
     }
 }

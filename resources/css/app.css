@@ -251,6 +251,12 @@ body {
     color: #276749;
 }
 
+.issue-toast-error {
+    border: 1px solid #feb2b2;
+    background: #fff5f5;
+    color: #9b2c2c;
+}
+
 .empty-state {
     margin: 0;
     padding: 28px;
@@ -724,6 +730,18 @@ body {
 
 .issue-table select {
     min-width: 0;
+}
+
+.issue-table .deleted-assignee-select {
+    color: #a0aec0;
+}
+
+.issue-table .deleted-assignee-select option:not(.deleted-assignee-option) {
+    color: #2d3748;
+}
+
+.issue-table .deleted-assignee-option {
+    color: #a0aec0;
 }
 
 .issue-table input[type="date"] {

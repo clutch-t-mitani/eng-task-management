@@ -3,7 +3,7 @@
 エンジニアとディレクター向けの ISSUE 管理ツールです。
 GitHub Issues を起点にしたタスクを、管理表・ダッシュボード・担当者別の視点で見やすく扱うための Laravel + Vue SPA です。
 
-現在の実装は、フロントエンドの画面モックと Laravel API の土台が中心です。詳細な完成形は `docs/` 配下の設計書にまとめています。
+現在の実装には、認証、ISSUE・各マスタ管理、管理表とグループ操作のAPIおよびVue画面が含まれます。今後実装する機能を含む詳細な完成形は `docs/` 配下の設計書にまとめています。
 
 ## 主な機能
 
@@ -111,19 +111,20 @@ SPA のルーティングは `resources/js/router/index.js` に定義されて�
 
 ## API
 
-現時点で実装されている API はヘルスチェックのみです。
+APIのベースURLは `/api/v1` です。ヘルスチェックとログイン以外のAPIは、原則としてSanctum認証が必要です。
 
-```http
-GET /api/v1/health
-```
+主な実装済みAPI:
 
-レスポンス:
+- `GET /api/v1/health`
+- `/api/v1/auth/*`
+- `/api/v1/users`
+- `/api/v1/engineers`
+- `/api/v1/products`
+- `/api/v1/issues`
+- `/api/v1/groups`
+- `GET /api/v1/table`
 
-```json
-{
-  "status": "ok"
-}
-```
+各APIのメソッド、リクエスト、レスポンスは [REST API設計](./docs/詳細設計書/03_REST_API設計.md) を参照してください。
 
 ## ディレクトリ構成
 
@@ -161,4 +162,4 @@ eng-task-management/
 
 - `resources/js/data/mockData.js` のモックデータを利用して、画面の挙動を先に確認できます。
 - Web ルートは SPA フォールバックになっており、`/api` 以外のパスは `resources/views/app.blade.php` に解決されます。
-- GitHub 連携、認証、各マスタ API は設計済みですが、実装は今後追加する前提です。
+- GitHub Webhook・再同期とダッシュボードAPIは設計済みで、今後追加する前提です。

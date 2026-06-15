@@ -4,28 +4,43 @@ import axios from 'axios';
 export const useGroupStore = defineStore('groups', {
     state: () => ({
         groups: [],
+        availableGroups: [],
         ungroupedIssues: [],
         loading: false,
+        tableRequestId: 0,
     }),
 
     actions: {
         async fetchTable(params = {}) {
+            const requestId = ++this.tableRequestId;
             this.loading = true;
 
             try {
                 const { data } = await axios.get('/api/v1/table', { params });
-                this.groups = data.groups;
-                this.ungroupedIssues = data.ungrouped_issues;
+
+                if (requestId === this.tableRequestId) {
+                    this.groups = data.groups;
+                    this.ungroupedIssues = data.ungrouped_issues;
+                }
+
                 return data;
             } finally {
-                this.loading = false;
+                if (requestId === this.tableRequestId) {
+                    this.loading = false;
+                }
             }
+        },
+
+        async fetchGroups() {
+            const { data } = await axios.get('/api/v1/groups');
+            this.availableGroups = data;
+            return data;
         },
 
         async createGroup(payload) {
             const { data } = await axios.post('/api/v1/groups', payload);
-            this.groups.push({ ...data, issues: [] });
-            this.sortGroups();
+            this.availableGroups.push(data);
+            this.sortAvailableGroups();
             return data;
         },
 
@@ -37,23 +52,37 @@ export const useGroupStore = defineStore('groups', {
                 Object.assign(group, data);
             }
 
+            const availableGroup = this.availableGroups.find((item) => item.id === id);
+
+            if (availableGroup) {
+                Object.assign(availableGroup, data);
+            }
+
             return data;
         },
 
         async deleteGroup(id) {
             await axios.delete(`/api/v1/groups/${id}`);
             this.groups = this.groups.filter((group) => group.id !== id);
+            this.availableGroups = this.availableGroups.filter((group) => group.id !== id);
         },
 
         async reorderGroups(orderedIds) {
             const { data } = await axios.patch('/api/v1/groups/reorder', { ordered_ids: orderedIds });
+            const visibleGroupIds = new Set(this.groups.map((group) => group.id));
             const issuesByGroup = new Map(this.groups.map((group) => [group.id, group.issues ?? []]));
-            this.groups = data.map((group) => ({ ...group, issues: issuesByGroup.get(group.id) ?? [] }));
+            this.groups = data
+                .filter((group) => visibleGroupIds.has(group.id))
+                .map((group) => ({ ...group, issues: issuesByGroup.get(group.id) ?? [] }));
             return data;
         },
 
         async reorderGroupIssues(groupId, orderedIssueIds) {
             await axios.patch(`/api/v1/groups/${groupId}/issues/reorder`, { ordered_ids: orderedIssueIds });
+        },
+
+        async reorderUngroupedIssues(orderedIssueIds) {
+            await axios.patch('/api/v1/issues/ungrouped/reorder', { ordered_ids: orderedIssueIds });
         },
 
         async moveIssueToGroup(issueId, groupId) {
@@ -103,7 +132,11 @@ export const useGroupStore = defineStore('groups', {
         },
 
         sortGroups() {
-            this.groups.sort((a, b) => a.product_id - b.product_id || a.display_order - b.display_order || a.id - b.id);
+            this.groups.sort((a, b) => a.display_order - b.display_order || a.id - b.id);
+        },
+
+        sortAvailableGroups() {
+            this.availableGroups.sort((a, b) => a.display_order - b.display_order || a.id - b.id);
         },
     },
 });

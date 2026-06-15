@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 
+let fetchEngineersRequest = null;
+
 export const useEngineerStore = defineStore('engineers', {
     state: () => ({
         engineers: [],
@@ -9,13 +11,21 @@ export const useEngineerStore = defineStore('engineers', {
 
     actions: {
         async fetchEngineers() {
-            this.loading = true;
+            if (fetchEngineersRequest) {
+                return fetchEngineersRequest;
+            }
 
-            try {
+            this.loading = true;
+            fetchEngineersRequest = (async () => {
                 const { data } = await axios.get('/api/v1/engineers');
                 this.engineers = data;
                 return data;
+            })();
+
+            try {
+                return await fetchEngineersRequest;
             } finally {
+                fetchEngineersRequest = null;
                 this.loading = false;
             }
         },
