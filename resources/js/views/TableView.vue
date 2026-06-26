@@ -210,7 +210,7 @@ watch(() => ({ ...filterStore.asParams }), () => {
   refresh();
 }, { deep: true });
 
-async function refresh() {
+async function refresh({ showErrors = true } = {}) {
   const requestId = groupStore.tableRequestId + 1;
 
   try {
@@ -220,11 +220,17 @@ async function refresh() {
       pruneSelectionToVisible();
       tableLoadFailed.value = false;
     }
+
+    return true;
   } catch (error) {
-    if (requestId !== groupStore.tableRequestId) return;
+    if (requestId !== groupStore.tableRequestId) return false;
 
     tableLoadFailed.value = true;
-    showErrorMessage(formatError(error, '管理表の取得に失敗しました。'));
+    if (showErrors) {
+      showErrorMessage(formatError(error, '管理表の取得に失敗しました。'));
+    }
+
+    return false;
   }
 }
 
@@ -292,9 +298,14 @@ async function bulkRemoveFromManaged() {
   bulkProcessing.value = true;
 
   try {
-    await issueStore.bulkRemoveFromManaged(selectedIssueIds.value);
+    const result = await issueStore.bulkRemoveFromManaged(selectedIssueIds.value);
     clearSelection();
-    await refresh();
+    const refreshed = await refresh({ showErrors: false });
+    if (refreshed) {
+      showSuccessMessage(result?.message ?? '選択したISSUEを管理表から外しました。');
+    } else {
+      showErrorMessage('選択したISSUEを管理表から外しましたが、最新データを取得できませんでした。');
+    }
   } catch (error) {
     showErrorMessage(formatError(error, '選択したISSUEを管理表から外せませんでした。'));
   } finally {
@@ -309,10 +320,15 @@ async function bulkMoveIssues() {
   bulkProcessing.value = true;
 
   try {
-    await issueStore.bulkUpdateGroup(selectedIssueIds.value, groupId);
+    const result = await issueStore.bulkUpdateGroup(selectedIssueIds.value, groupId);
     clearSelection();
     bulkMoveTarget.value = '';
-    await refresh();
+    const refreshed = await refresh({ showErrors: false });
+    if (refreshed) {
+      showSuccessMessage(result?.message ?? '選択したISSUEを移動しました。');
+    } else {
+      showErrorMessage('選択したISSUEを移動しましたが、最新データを取得できませんでした。');
+    }
   } catch (error) {
     showErrorMessage(formatError(error, '選択したISSUEの移動に失敗しました。'));
   } finally {
