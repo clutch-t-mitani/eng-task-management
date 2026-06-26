@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EngineerController;
+use App\Http\Controllers\GroupController;
+use App\Http\Controllers\GroupIssueController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\TableController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,7 +33,21 @@ Route::prefix('v1')->group(function () {
         Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
+        Route::get('/table', TableController::class)->name('table.index');
+
+        Route::get('/groups', [GroupController::class, 'index'])->name('groups.index');
+        Route::post('/groups', [GroupController::class, 'store'])->name('groups.store');
+        Route::patch('/groups/reorder', [GroupController::class, 'reorder'])->name('groups.reorder');
+        Route::put('/groups/{group}', [GroupController::class, 'update'])->name('groups.update');
+        Route::delete('/groups/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
+        Route::patch('/groups/{group}/issues/reorder', [GroupIssueController::class, 'reorder'])->name('groups.issues.reorder');
+        Route::post('/groups/{group}/issues/{issue}', [GroupIssueController::class, 'add'])->name('groups.issues.add');
+        Route::delete('/groups/{group}/issues/{issue}', [GroupIssueController::class, 'remove'])->name('groups.issues.remove');
+
         Route::get('/issues', [IssueController::class, 'index'])->name('issues.index');
+        Route::patch('/issues/bulk/remove-from-managed', [IssueController::class, 'bulkRemoveFromManaged'])->name('issues.bulk-remove-from-managed');
+        Route::patch('/issues/bulk/group', [IssueController::class, 'bulkUpdateGroup'])->name('issues.bulk-group');
+        Route::patch('/issues/ungrouped/reorder', [IssueController::class, 'reorderUngrouped'])->name('issues.ungrouped.reorder');
         Route::get('/issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
         Route::put('/issues/{issue}', [IssueController::class, 'update'])->name('issues.update');
         Route::patch('/issues/{issue}/status', [IssueController::class, 'updateStatus'])->name('issues.status');

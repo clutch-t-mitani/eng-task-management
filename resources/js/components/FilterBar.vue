@@ -2,48 +2,75 @@
   <div class="filter-bar">
     <div class="filter-group">
       <label>プロダクト</label>
-      <select v-model="localFilters.product_id" @change="emit">
-        <option :value="null">すべて</option>
-        <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
+      <select :value="filterStore.product_id ?? ''" @change="setNumberFilter('product_id', $event.target.value)">
+        <option value="">すべて</option>
+        <option v-for="product in productStore.products" :key="product.id" :value="product.id">
+          {{ product.name }}
+        </option>
       </select>
     </div>
     <div class="filter-group">
-      <label>担当者</label>
-      <select v-model="localFilters.member_id" @change="emit">
-        <option :value="null">すべて</option>
-        <option v-for="m in members" :key="m.id" :value="m.id">{{ m.name }}</option>
+      <label>エンジニア</label>
+      <select :value="filterStore.engineer_id ?? ''" @change="setNullableEngineerFilter($event.target.value)">
+        <option value="">すべて</option>
+        <option :value="ISSUE_FILTER_EMPTY_VALUE">未設定</option>
+        <option v-for="engineer in engineerStore.engineers" :key="engineer.id" :value="engineer.id">
+          {{ engineer.name }}
+        </option>
       </select>
     </div>
     <div class="filter-group">
       <label>ステータス</label>
-      <select v-model="localFilters.status_id" @change="emit">
+      <select :value="statusFilterValue" @change="setStatusFilter($event.target.value)">
+        <option :value="DEFAULT_STATUS_FILTER_VALUE">完了以外</option>
         <option value="">すべて</option>
-        <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.label }}</option>
+        <option v-for="status in statuses" :key="status.id" :value="status.id">{{ status.label }}</option>
       </select>
     </div>
-    <button class="btn-reset" @click="reset">リセット</button>
+    <button class="btn-reset" type="button" @click="filterStore.reset()">リセット</button>
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue'
-import { products, members } from '../data/mockData.js'
-import { ISSUE_STATUSES } from '../constants/issues.js'
+import { computed, onMounted } from 'vue';
+import { ISSUE_FILTER_EMPTY_VALUE, ISSUE_STATUSES } from '../constants/issues';
+import { useEngineerStore } from '../stores/engineers';
+import { DEFAULT_TABLE_STATUS_IDS, useFilterStore } from '../stores/filters';
+import { useProductStore } from '../stores/products';
 
-const emits = defineEmits(['change'])
-const statuses = ISSUE_STATUSES
+const filterStore = useFilterStore();
+const productStore = useProductStore();
+const engineerStore = useEngineerStore();
+const statuses = ISSUE_STATUSES;
+const DEFAULT_STATUS_FILTER_VALUE = '__incomplete__';
+const statusFilterValue = computed(() => (
+  Array.isArray(filterStore.status_id) ? DEFAULT_STATUS_FILTER_VALUE : filterStore.status_id
+));
 
-const localFilters = reactive({ product_id: null, member_id: null, status_id: '' })
+onMounted(() => {
+  if (productStore.products.length === 0) productStore.fetchProducts();
+});
 
-function emit() {
-  emits('change', { ...localFilters })
+function setNumberFilter(key, value, emptyValue = null) {
+  filterStore.setFilter({ [key]: value === '' ? emptyValue : Number(value) });
 }
 
-function reset() {
-  localFilters.product_id = null
-  localFilters.member_id = null
-  localFilters.status_id = ''
-  emit()
+function setNullableEngineerFilter(value) {
+  if (value === ISSUE_FILTER_EMPTY_VALUE) {
+    filterStore.setFilter({ engineer_id: ISSUE_FILTER_EMPTY_VALUE });
+    return;
+  }
+
+  setNumberFilter('engineer_id', value);
+}
+
+function setStatusFilter(value) {
+  if (value === DEFAULT_STATUS_FILTER_VALUE) {
+    filterStore.setFilter({ status_id: [...DEFAULT_TABLE_STATUS_IDS] });
+    return;
+  }
+
+  setNumberFilter('status_id', value, '');
 }
 </script>
 

@@ -23,13 +23,13 @@ return new class extends Migration
         }
 
         if (! Schema::hasColumn('users', 'active_email')) {
-            DB::statement("
+            DB::statement('
                 ALTER TABLE users
                 ADD active_email VARCHAR(255)
                 GENERATED ALWAYS AS (
                     CASE WHEN deleted_at IS NULL THEN email ELSE NULL END
                 ) STORED
-            ");
+            ');
         }
 
         if (! $this->indexExists('users_active_email_unique')) {

@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BulkIssueGroupRequest;
+use App\Http\Requests\BulkIssueIdsRequest;
 use App\Http\Requests\IssueIndexRequest;
+use App\Http\Requests\ReorderRequest;
 use App\Http\Requests\UpdateIssueRequest;
 use App\Http\Requests\UpdateIssueScheduleRequest;
 use App\Http\Requests\UpdateIssueStatusRequest;
@@ -44,6 +47,29 @@ class IssueController extends Controller
     public function toggleManaged(Issue $issue): JsonResponse
     {
         return response()->json(IssueResource::make($this->issues->toggleManaged($issue))->resolve());
+    }
+
+    public function bulkRemoveFromManaged(BulkIssueIdsRequest $request): JsonResponse
+    {
+        $this->issues->bulkRemoveFromManaged($request->validated('issue_ids'));
+
+        return response()->json(['message' => '選択したISSUEを管理表から外しました。']);
+    }
+
+    public function bulkUpdateGroup(BulkIssueGroupRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $this->issues->bulkUpdateGroup($validated['issue_ids'], $validated['group_id']);
+
+        return response()->json(['message' => '選択したISSUEを移動しました。']);
+    }
+
+    public function reorderUngrouped(ReorderRequest $request): JsonResponse
+    {
+        $this->issues->reorderUngrouped($request->validated('ordered_ids'));
+
+        return response()->json(['message' => '未グループISSUEの並び順を更新しました。']);
     }
 
     public function destroy(Issue $issue): JsonResponse

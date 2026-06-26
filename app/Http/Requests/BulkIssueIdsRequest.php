@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class BulkIssueIdsRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'issue_ids' => ['required', 'array', 'min:1'],
+            'issue_ids.*' => ['integer', 'distinct', Rule::exists('issues', 'id')],
+        ];
+    }
+}
