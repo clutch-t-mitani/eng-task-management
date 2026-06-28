@@ -108,10 +108,11 @@ DB/APIではステータスIDを保持・送受信し、画面表示では従来
 GitHub Issuesで作成・更新されたIssueを、本ツールに自動取り込みして一元管理する。Issue登録の入口はGitHubとし、本ツール上でIssueを手入力作成しない。
 
 - **自動反映トリガー**：GitHub Webhook の `issues` イベントを受信した時に実行
-- **対象イベント**：`opened` / `edited` / `reopened` / `closed` / `transferred`。`deleted` はGitHub側で通常発生しないため対象外
+- **対象イベント**：`opened` / `edited` / `reopened` / `closed`。`transferred` は移動先リポジトリとプロダクトの対応付けを安全に確定できないためv1では `skipped` とし、リポジトリ変更ワークフローと合わせて将来対応する
 - **再同期トリガー**：初回取り込み・Webhook失敗時の復旧・差分確認のため、ディレクターが「GitHubから再同期」ボタンを押した時に手動実行可能
 - **同期方向**：片方向（GitHub → ツール）。ツール側の変更はGitHubに反映しない
-- **対象リポジトリ**：`products` マスタごとに 1 リポジトリ（owner/repo）を管理画面で登録。Webhookは受信payloadのrepository情報から対象プロダクトを特定する
+- **対象リポジトリ**：`products` マスタごとに有効な 1 リポジトリ（owner/repo）を管理画面で登録。owner/repoは小文字に正規化し、同一リポジトリを複数プロダクトに登録できない。Webhookは受信payloadのrepository情報から対象プロダクトを一意に特定する
+- **連携先の変更・解除**：取り込み済みIssueがあるプロダクトでは、異なるowner/repoへの変更を許可しない。連携解除は設定を物理削除せず無効化し、取り込み済みIssueは保持する。同じowner/repoの再有効化は許可する
 - **認証**：
   - Webhook受信: GitHub Webhook Secretを `.env` の `GITHUB_WEBHOOK_SECRET` に保存し、`X-Hub-Signature-256` を検証する
   - 再同期: Personal Access Token（PAT）を `.env` の `GITHUB_TOKEN` に保存。全リポジトリ共通で使用
@@ -119,13 +120,14 @@ GitHub Issuesで作成・更新されたIssueを、本ツールに自動取り�
   - `is_managed = false`（管理表には未追加。ディレクターが「未追加リスト」から選んで管理表へ追加）
   - `status_id = 1`（未着手）
   - `director_id = NULL`、`engineer_id = NULL`（GitHub assignee はマッピングしない。ディレクターが手動でセット）
-- **重複時の挙動（Upsert）**：`(product_id, github_issue_number)` をキーに既存レコードを判定
+- **重複時の挙動（Upsert）**：`(product_id, github_issue_number)` をキーに既存レコードを判定する。Webhookの `X-GitHub-Delivery` は一意に記録し、同一deliveryの再送はIssue更新とログ作成を重複実行しない
   - 既存あり：`title` / GitHub状態 / `github_url` / 同期日時 のみ上書き
   - **ツール独自項目は保護**：`director_id` / `engineer_id` / `status_id` / `is_managed` / `display_order` / 予定日・実績日 は同期で上書きしない
 - **PR除外**：GitHub Issues APIは Pull Request も返却するが、`pull_request` フィールドの有無で判定してスキップ
-- **自動反映結果の可視化**：Webhook処理結果を `sync_logs` に履歴保存。画面には最終反映日時・最終ステータスを表示する
+- **自動反映結果の可視化**：Webhook処理結果を `sync_logs` に履歴保存。画面には最後に成功または一部成功した反映の日時・ステータスを表示し、失敗の詳細は `sync_logs` で確認できるようにする
 - **再同期結果の可視化**：作成 / 更新 / スキップ / 失敗 の件数をトーストで表示し、`sync_logs` に履歴保存
-- **エラー処理**：Webhook署名不正は401、未登録リポジトリは202で受け取りログに `skipped` として記録。再同期でレート制限（403/429）が起きた場合は途中までの結果を「partial」として記録し、リセット時刻をログに残す。401・404 は「failed」として記録
+- **多重実行防止**：同一プロダクトの再同期は同時に1件だけ実行し、実行中の追加要求は409で返す。Webhookと再同期が競合してもGitHub由来項目のUpsertが破綻しないよう、DBの一意制約とtransactionで保護する
+- **エラー処理**：Webhook Secret未設定または署名不正は401とし、DBを更新しない。未登録リポジトリは202で受け取りログに `skipped` として記録。再同期でレート制限（403/429）が起きた場合は途中までの結果を「partial」として記録し、リセット時刻をログに残す。401・404・5xx・タイムアウトは「failed」として記録する
 
 ---
 
@@ -149,7 +151,7 @@ GitHub Issuesで作成・更新されたIssueを、本ツールに自動取り�
 | `users` | ディレクター＝ログインユーザー（name・email・password(ハッシュ)・deleted_at・timestamps） |
 | `engineers` | エンジニアマスタ（name・display_order・deleted_at・timestamps）※ログインなし |
 | `products` | プロダクトマスタ（名前・説明・表示順） |
-| `product_repositories` | プロダクトに紐付くGitHubリポジトリ（owner・repo・最終同期日時・最終同期ステータス）※同期対象の指定 |
+| `product_repositories` | プロダクトに紐付くGitHubリポジトリ（owner・repo・有効フラグ・最終同期日時・最終同期ステータス）※同期対象の指定 |
 | `issues` | ISSUE本体（GitHub由来のタイトル・URL・番号・状態、director_id(FK→users)・engineer_id(FK→engineers)・ステータス・product_id(FK)・is_managed・display_order・github_synced_at） |
 | `issue_schedules` | 日付管理（issue_id・予定開始日・実際の開始日・予定終了日・終了日） |
 | `groups` | プロダクト非依存のリリースグループ（名前・リリース予定日・表示順） |
@@ -162,4 +164,5 @@ GitHub Issuesで作成・更新されたIssueを、本ツールに自動取り�
 
 - GitHub Issue URL の重複チェック・フォーマットバリデーション
 - GitHub assignee と本ツールのエンジニアマスタの自動マッピング
+- GitHub Issueの `transferred` 自動追従（移動先リポジトリとプロダクトの対応付け、管理項目の引き継ぎ）
 - ツール側ステータス変更をGitHub LabelやProjectへ反映する双方向連携

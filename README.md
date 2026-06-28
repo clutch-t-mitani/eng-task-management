@@ -123,6 +123,7 @@ APIのベースURLは `/api/v1` です。ヘルスチェックとログイン以
 - `/api/v1/issues`
 - `/api/v1/groups`
 - `GET /api/v1/table`
+- `GET /api/v1/dashboard`
 
 各APIのメソッド、リクエスト、レスポンスは [REST API設計](./docs/詳細設計書/03_REST_API設計.md) を参照してください。
 
@@ -162,4 +163,4 @@ eng-task-management/
 
 - `resources/js/data/mockData.js` のモックデータを利用して、画面の挙動を先に確認できます。
 - Web ルートは SPA フォールバックになっており、`/api` 以外のパスは `resources/views/app.blade.php` に解決されます。
-- GitHub Webhook・再同期とダッシュボードAPIは設計済みで、今後追加する前提です。
+- ダッシュボードAPI/UIは実装済みです。GitHub Webhook・再同期は詳細設計済みで、開発タスクP6として実装します。P6完了後にダッシュボードを含む全体通し確認（P5-8）を行います。

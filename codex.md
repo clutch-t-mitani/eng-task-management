@@ -66,6 +66,11 @@
 - Webhook 署名は `GITHUB_WEBHOOK_SECRET` と `X-Hub-Signature-256` を使い、`'sha256=' . hash_hmac('sha256', rawPayload, secret)` と受信ヘッダー値を `hash_equals()` で検証する。
 - Webhook 再送や手動再同期に耐えるよう、取り込み処理は冪等にする。
 - `(product_id, github_issue_number)` の組み合わせを一意な識別子として扱う。
+- owner/repoは小文字に正規化し、同一リポジトリを複数プロダクトに紐付けない。取り込み後の別リポジトリへの変更は拒否し、解除時は設定を無効化して保持する。
+- `X-GitHub-Delivery` を一意に記録し、同一deliveryのWebhook再送でIssueとログを重複更新しない。同時競合の一意制約違反は後続transactionをロールバックし、処理済みとして200を返す。
+- `transferred` はv1では取り込まず `skipped` とし、Issueの所属プロダクトを自動変更しない。
+- 同一プロダクトの手動再同期は同時に1件だけ実行し、実行中の追加要求は409で返す。
+- `product_repositories.last_synced_at` / `last_sync_status` は成功またはpartial時のみ更新し、失敗時は直近の成功/一部成功値を保持する。失敗内容はSyncLogに記録する。
 - レート制限、PAT 未設定、不正 PAT、未登録リポジトリは SyncLog に残し、UI で判断できるレスポンスにする。
 
 ### 認証
