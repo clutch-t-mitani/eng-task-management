@@ -127,11 +127,12 @@ class GitHubSyncService
             // 終了判定
             $hasChanges = $total->created + $total->updated >= 1;
             $firstError = $errorMessage ?? $total->firstError;
+            $hasError = $errorMessage !== null || $total->failed > 0 || $limitReached;
 
-            if ($limitReached && ! $hasChanges) {
-                $status = SyncStatus::Failed;
+            if ($hasChanges && $hasError) {
+                $status = SyncStatus::Partial;
             } elseif ($hasChanges) {
-                $status = $total->failed > 0 || $limitReached ? SyncStatus::Partial : SyncStatus::Success;
+                $status = SyncStatus::Success;
             } else {
                 $status = SyncStatus::Failed;
             }
