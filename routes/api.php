@@ -2,10 +2,13 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EngineerController;
+use App\Http\Controllers\GitHubWebhookController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\GroupIssueController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductRepositoryController;
+use App\Http\Controllers\SyncController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +17,9 @@ Route::prefix('v1')->group(function () {
     Route::get('/health', fn () => ['status' => 'ok'])->name('api.health');
 
     Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
+
+    // GitHub Webhook（Sanctum認証外・署名検証で認証）
+    Route::post('/github/webhook', GitHubWebhookController::class)->name('github.webhook');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
@@ -32,6 +38,12 @@ Route::prefix('v1')->group(function () {
         Route::patch('/products/reorder', [ProductController::class, 'reorder'])->name('products.reorder');
         Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+
+        Route::get('/products/{product}/repository', [ProductRepositoryController::class, 'show'])->name('products.repository.show');
+        Route::put('/products/{product}/repository', [ProductRepositoryController::class, 'update'])->name('products.repository.update');
+        Route::delete('/products/{product}/repository', [ProductRepositoryController::class, 'destroy'])->name('products.repository.destroy');
+        Route::post('/products/{product}/sync', [SyncController::class, 'store'])->name('products.sync.store');
+        Route::get('/products/{product}/sync-logs', [SyncController::class, 'index'])->name('products.sync-logs.index');
 
         Route::get('/table', TableController::class)->name('table.index');
 
