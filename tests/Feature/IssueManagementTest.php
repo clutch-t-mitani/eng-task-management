@@ -321,6 +321,71 @@ class IssueManagementTest extends TestCase
             ->assertJsonPath('0.id', $unmanaged->id);
     }
 
+    // P6-12: UnmanagedImportsPanel API契約を固定する回帰テスト
+
+    public function test_unmanaged_imports_response_contract_includes_github_fields(): void
+    {
+        $actor = User::factory()->create();
+        $product = Product::query()->create(['name' => 'GitHub Product', 'display_order' => 1]);
+
+        $this->createIssue([
+            'product_id' => $product->id,
+            'is_managed' => false,
+            'github_issue_number' => 201,
+            'github_state' => 'open',
+            'github_url' => 'https://github.com/acme/repo/issues/201',
+        ]);
+
+        $response = $this->actingAs($actor)
+            ->getJson('/api/v1/issues?unmanaged_imports=true')
+            ->assertOk()
+            ->assertJsonCount(1);
+
+        $item = $response->json('0');
+        $this->assertArrayHasKey('github_issue_number', $item, 'UnmanagedImportsPanel requires github_issue_number');
+        $this->assertArrayHasKey('github_state', $item, 'UnmanagedImportsPanel requires github_state');
+        $this->assertArrayHasKey('github_url', $item, 'UnmanagedImportsPanel requires github_url');
+        $this->assertArrayHasKey('product_name', $item, 'UnmanagedImportsPanel requires product_name');
+        $this->assertEquals(201, $item['github_issue_number']);
+        $this->assertEquals('open', $item['github_state']);
+        $this->assertEquals('https://github.com/acme/repo/issues/201', $item['github_url']);
+        $this->assertEquals('GitHub Product', $item['product_name']);
+    }
+
+    public function test_unmanaged_imports_requires_both_is_managed_false_and_github_issue_number(): void
+    {
+        $actor = User::factory()->create();
+
+        // is_managed=true + github_issue_number あり → 除外される（管理済み）
+        $this->createIssue(['is_managed' => true, 'github_issue_number' => 211]);
+        // is_managed=false + github_issue_number あり → 含まれる
+        $imported = $this->createIssue(['is_managed' => false, 'github_issue_number' => 212]);
+
+        // 両条件の AND であることを確認: managed は除外、unmanaged のみ返す
+        $this->actingAs($actor)
+            ->getJson('/api/v1/issues?unmanaged_imports=true')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $imported->id)
+            ->assertJsonPath('0.is_managed', false);
+    }
+
+    public function test_unmanaged_imports_filters_by_product_id(): void
+    {
+        $actor = User::factory()->create();
+        $productA = Product::query()->create(['name' => 'Product A', 'display_order' => 1]);
+        $productB = Product::query()->create(['name' => 'Product B', 'display_order' => 2]);
+
+        $issueA = $this->createIssue(['product_id' => $productA->id, 'is_managed' => false, 'github_issue_number' => 301]);
+        $this->createIssue(['product_id' => $productB->id, 'is_managed' => false, 'github_issue_number' => 302]);
+
+        $this->actingAs($actor)
+            ->getJson("/api/v1/issues?unmanaged_imports=true&product_id={$productA->id}")
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $issueA->id);
+    }
+
     public function test_default_issue_index_returns_all_issues(): void
     {
         $actor = User::factory()->create();
