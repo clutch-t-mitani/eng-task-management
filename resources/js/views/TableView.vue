@@ -16,6 +16,7 @@
       <button class="btn-secondary" type="button" :disabled="!canBulkMove" @click="bulkMoveIssues">
         移動
       </button>
+      <GitHubResyncButton @success="showSuccessMessage" @error="showErrorMessage" />
       <button class="btn-secondary" type="button" @click="openCreateGroupModal">
         + グループ追加
       </button>
@@ -116,6 +117,11 @@
       </template>
     </div>
 
+    <UnmanagedImportsPanel
+      v-if="filterStore.product_id != null"
+      @managed="refresh"
+    />
+
     <div v-if="groupModalOpen" class="modal-overlay" @click.self="closeGroupModal">
       <form class="modal" @submit.prevent="saveGroup">
         <h3>{{ groupModalTitle }}</h3>
@@ -155,7 +161,9 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import draggable from 'vuedraggable';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
 import FilterBar from '../components/FilterBar.vue';
+import GitHubResyncButton from '../components/GitHubResyncButton.vue';
 import GroupSection from '../components/GroupSection.vue';
+import UnmanagedImportsPanel from '../components/UnmanagedImportsPanel.vue';
 import { useEngineerStore } from '../stores/engineers';
 import { useFilterStore } from '../stores/filters';
 import { useGroupStore } from '../stores/groups';

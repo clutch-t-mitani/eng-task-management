@@ -60,13 +60,32 @@
 ### GitHub 連携
 
 - Webhook と再同期は、GitHub 由来項目だけを更新する。
+- GitHub Issueの新規取り込み対象は `open` のみとする。アプリに未登録の `closed` Issueは、Webhook・初回取り込み・再同期のいずれでも作成せず `skipped` とする。
+- 再同期ではGitHub APIから `state=all` を取得し、アプリに登録済みのIssueはGitHub側が `open` / `closed` のどちらでも更新する。これにより、新しい `open` Issueを取り込みつつ、取り込み後にcloseされたIssueの `github_state` を反映する。
 - 既存 ISSUE 更新時に `director_id`、`engineer_id`、`status`、`is_managed`、`display_order`、`issue_schedules` を上書きしてはいけない。
 - GitHub 側で Issue が close / reopen されても、アプリ側の `status` は自動変更しない。`github_state` として表示する。
 - GitHub Issues API に含まれる Pull Request は、`pull_request` キーの有無で除外する。
 - Webhook 署名は `GITHUB_WEBHOOK_SECRET` と `X-Hub-Signature-256` を使い、`'sha256=' . hash_hmac('sha256', rawPayload, secret)` と受信ヘッダー値を `hash_equals()` で検証する。
 - Webhook 再送や手動再同期に耐えるよう、取り込み処理は冪等にする。
 - `(product_id, github_issue_number)` の組み合わせを一意な識別子として扱う。
-- レート制限、PAT 未設定、不正 PAT、未登録リポジトリは SyncLog に残し、UI で判断できるレスポンスにする。
+- owner/repoは小文字に正規化し、同一リポジトリを複数プロダクトに紐付けない。取り込み後の別リポジトリへの変更は拒否し、解除時は設定を無効化して保持する。
+- `X-GitHub-Delivery` を一意に記録し、同一deliveryの `success` / `skipped` はIssueとログを重複更新せず200を返す。`failed` は同じSyncLogを再利用し、`attempt_count` を加算して再試行する。同時競合の一意制約違反は後続transactionをロールバックし、確定済みstatusを再判定する。
+- GitHubは失敗したWebhook deliveryを自動再送しない。500応答後の復旧は、GitHubのRecent deliveriesからの手動Redeliver、GitHub REST APIを利用した運用上の再配信、または本ツールの手動再同期で行う。
+- failed deliveryを再試行する際は、対象SyncLogを `lockForUpdate()` した後にstatusを再取得・再判定する。行ロック待機は最大2秒とし、取得できなければ500で返す。待機中に先行処理が `success` / `skipped` へ確定していた場合は再実行しない。
+- failed deliveryの行ロックは、Issue反映とSyncLog確定を行う同一transactionのcommitまで保持する。
+- failed deliveryの再試行が再度失敗して主transactionがロールバックされた場合も、failedログ確定transactionで `attempt_count` を必ず加算する。
+- WebhookでPRを受信した場合はIssueを反映せず、HTTP 202、`SyncLog.status='skipped'`, `skipped_count=1` とする。
+- Webhookの `skipped` ログは `error_message` に安定した理由コードを保存する。
+- Webhookはロック待機を含め、受信開始から10秒以内にGitHubへ応答する。
+- 新規Issueの `display_order=max+1` は、database cache lock `github-import:display-order`（TTL 30秒、最大5秒待機）を採番前からIssue transactionのcommitまで保持して重複採番を防ぐ。
+- `transferred` はv1では取り込まず `skipped` とし、Issueの所属プロダクトを自動変更しない。
+- 同一プロダクトの手動再同期は `github-sync:product:{product_id}` の原子的ロック（TTL 3600秒）で同時に1件だけ実行し、実行中の追加要求は409で返す。
+- `product_repositories.last_synced_at` / `last_sync_status` は成功またはpartial時のみ更新し、失敗時は直近の成功/一部成功値を保持する。失敗内容はSyncLogに記録する。
+- 手動再同期の中断またはIssue単位失敗時は、`created_count + updated_count >= 1` ならpartial、0件ならfailedとする。
+- 手動再同期のSyncLogは開始時に `running` で作成し、終了時に最終statusと `finished_at` を確定する。プロセス異常終了で残った `running` は実行中または異常終了候補として表示し、排他ロックの判定には使用しない。
+- GitHub APIの接続例外と一時的な500/502/503/504は初回に加えて最大2回再試行する。401/403/404/422/429、その他の4xx、不正JSONは再試行せず、反映件数に応じてfailedまたはpartialで確定する。
+- 同期実行は最大100ページ・受信開始から120秒を上限とし、次のページ取得またはretry前に残り時間を確認する。上限到達時は処理を中断し、反映済み件数に応じてpartialまたはfailedで確定する。
+- レート制限、PAT 未設定、不正 PAT、未登録リポジトリは SyncLog に残す。プロダクトを特定できるログはUIで確認可能にし、`product_id=NULL` となる未登録リポジトリのログはv1ではDB・サーバーログによる運用調査対象とする。
 
 ### 認証
 
@@ -98,7 +117,7 @@
 
 - Backend の重要ロジックは Feature Test を追加する。
 - Service に分けた複雑なロジックは Unit Test または Feature Test で正常系・異常系を押さえる。
-- GitHub Webhook は署名不正、対象外イベント、PR 除外、新規作成、既存更新、管理項目保持をテストする。
+- GitHub Webhook は署名不正、対象外イベント、PR 除外、未登録openの新規作成、未登録closedのスキップ、登録済みIssueのopen/closed更新、管理項目保持をテストする。
 - 並び替えは、順序保存、プロダクトをまたいだグループ内ISSUE混在、未グループの全プロダクト共通順、部分並び替え、存在しない ID の扱いを確認する。
 - 認証 API はログイン、ログアウト、me、未認証アクセスを確認する。
 - Frontend は最低限 `./vendor/bin/sail npm run build` で構文・依存関係・Vite build の破綻を確認する。

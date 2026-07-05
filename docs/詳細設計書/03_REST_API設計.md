@@ -181,24 +181,33 @@ GitHub Webhookの受信エンドポイントはGitHubから直接呼ばれるた
 
 署名検証:
 1. `.env` の `GITHUB_WEBHOOK_SECRET` を読む
-2. リクエストbodyのraw payloadを `hash_hmac('sha256', payload, secret)` で計算
-3. `hash_equals()` で `X-Hub-Signature-256` と比較。不一致は `401`
+2. リクエストbodyのraw payloadから `'sha256=' . hash_hmac('sha256', rawPayload, secret)` を計算
+3. 計算値と `X-Hub-Signature-256` を `hash_equals()` で比較。不一致は `401`
+
+署名検証後の入力検証:
+- `X-GitHub-Delivery`: 必須、文字列、100文字以下
+- `X-GitHub-Event`: 必須、文字列
+- body: 正しいJSON
+- `issues` の対象action: `action`、`repository.owner.login`、`repository.name`、`issue.number`、`issue.title`、`issue.html_url`、`issue.state` を必須とし、`issue.state` は `open` / `closed` のみ許可
 
 Webhookレスポンス:
-- `200`: 対象Issueを作成/更新した
-- `202`: 対象外イベント、PR、未登録リポジトリなどで処理をスキップした
+- `200`: 対象Issueを作成/更新した、または同一 `X-GitHub-Delivery` の `success` / `skipped` が処理済みだった
+- `202`: 対象外イベント、PR、未登録リポジトリ、未登録closed Issueなどで処理をスキップした
 - `401`: 署名不正
+- `422`: 必須ヘッダ欠落・長さ超過、不正JSON、対象Issue payloadの必須項目不足・型不正
 - `500`: 予期しないサーバーエラー（SyncLogにfailedを記録）
+
+GitHubへの応答は受信開始から10秒以内に返す。failed delivery再送時のDB行ロック待機は最大2秒、表示順ロック待機は最大5秒とし、取得できなければfailedログを確定して500を返し、GitHubの再送に委ねる。ロック待機を含むWebhook処理が10秒を超えないことを性能テストで確認する。
 
 #### リポジトリ設定・再同期
 
 | メソッド | パス | 概要 |
 |---|---|---|
-| GET | `/api/v1/products/{product}/repository` | プロダクトに紐付くGitHubリポジトリ取得（未登録は404） |
-| PUT | `/api/v1/products/{product}/repository` | リポジトリ登録/更新（owner, repo を upsert） |
-| DELETE | `/api/v1/products/{product}/repository` | 連携解除（取り込み済みISSUEは残す） |
-| POST | `/api/v1/products/{product}/sync` | 初回取り込み・復旧用にGitHub Issuesを再同期実行。`SyncLog` サマリを返却 |
-| GET | `/api/v1/products/{product}/sync-logs` | 直近の同期ログ一覧（クエリ: limit、デフォルト20） |
+| GET | `/api/v1/products/{product}/repository` | プロダクトに紐付くGitHubリポジトリ取得（無効化済みも `is_active=false` で返し、設定行自体が未登録の場合のみ404） |
+| PUT | `/api/v1/products/{product}/repository` | リポジトリ登録/更新/再有効化（owner, repo を小文字へ正規化してupsert） |
+| DELETE | `/api/v1/products/{product}/repository` | 連携解除（`is_active=false`。設定行と取り込み済みISSUEは残す） |
+| POST | `/api/v1/products/{product}/sync` | 初回取り込み・復旧用にGitHub Issuesを再同期実行。未登録open Issueを作成し、登録済みIssueはopen/closedを問わず更新する。`SyncLog` サマリを返却 |
+| GET | `/api/v1/products/{product}/sync-logs` | 直近の同期ログ一覧（クエリ: `limit`、整数1〜100、デフォルト20。`started_at DESC, id DESC`） |
 
 **リポジトリ登録リクエスト（PUT）**:
 ```json
@@ -208,13 +217,14 @@ Webhookレスポンス:
 }
 ```
 
-バリデーション: `owner` / `repo` ともに `^[A-Za-z0-9._-]+$`、最大100文字。
+バリデーション: `owner` / `repo` ともに `^[A-Za-z0-9._-]+$`、最大100文字。検証後に小文字へ正規化する。同一owner/repoが別プロダクトで登録済みなら422、取り込み済みIssueが存在するプロダクトで異なるowner/repoへ変更する場合も422を返す。無効化済みの同一owner/repoは再有効化できる。
 
 **リポジトリレスポンス（GET）**:
 ```json
 {
   "owner": "laravel",
   "repo": "framework",
+  "is_active": true,
   "last_synced_at": "2026-05-04T10:00:00Z",
   "last_sync_status": "success"
 }
@@ -225,7 +235,10 @@ Webhookレスポンス:
 {
   "id": 42,
   "product_id": 1,
+  "trigger": "manual_resync",
+  "github_delivery_id": null,
   "triggered_by": { "id": 4, "name": "田中 美咲" },
+  "attempt_count": 1,
   "status": "success",
   "created_count": 3,
   "updated_count": 7,
@@ -237,31 +250,44 @@ Webhookレスポンス:
 }
 ```
 
+`GET /sync-logs` は同じSyncLog形式をLaravel Resource Collectionの `{ "data": [...] }` で返す。Webhookログでは `trigger="webhook"`, `github_delivery_id=<delivery ID>`, `triggered_by=null` とする。`running` の手動再同期ログも返却対象に含める。
+
+`PUT /repository` はGETと同じリポジトリ形式を200で返し、`DELETE /repository` は204を返す。
+
 エラー時のステータスコード:
-- `422`: リポジトリ未登録（"リポジトリが未登録です"）
+- `422`: リポジトリ未登録または無効化済み（"有効なリポジトリ連携がありません"）
+- `409`: 同一プロダクトの再同期が実行中
 - `200` + `status: "failed"`: `GITHUB_TOKEN` 未設定（同時にSyncLogへ failed として記録）
-- `200` + `status: "failed" / "partial"`: GitHub API側の問題（401/404/レート制限）。HTTPは200だがbody内 `status` で判別
+- `200` + `status: "failed" / "partial"`: GitHub API側の問題（401/404/レート制限/5xx/timeout）。HTTPは200だが、反映0件なら `failed`、1件以上なら `partial` とbody内 `status` で判別
 
 **Webhook処理のロジック概要**（`GitHubWebhookController` / `GitHubIssueImportService::upsertFromWebhook`）:
-1. 署名検証後、`X-GitHub-Event` が `issues` 以外なら `202` で終了
-2. `action` が `opened` / `edited` / `reopened` / `closed` / `transferred` 以外なら `202` で終了
-3. `issue.pull_request` が存在する場合はPRとしてスキップ
-4. payloadの `repository.owner.login` / `repository.name` から `product_repositories` を検索。未登録なら `product_id=NULL`, `SyncLog.status='skipped'` のログを残し `202`
-5. `(product_id, issue.number)` でUpsert
-   - 新規: `is_managed=false`, `status_id=1`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` `issues` テーブル全体の最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
+1. `GITHUB_WEBHOOK_SECRET` が空、署名ヘッダがない、または署名不一致なら401で即終了する。この段階でDBを更新しない
+2. `X-GitHub-Delivery` / `X-GitHub-Event` とJSONを検証する。ヘッダ欠落・delivery IDの100文字超過・不正JSONは422とし、SyncLogを含めDBを更新しない
+3. 同一 `github_delivery_id` のSyncLogが存在し、`status` が `success` / `skipped` なら処理済みとして200を返す。`failed` なら同じ行を `lockForUpdate()` し、ロック取得後にstatusを再取得・再判定する。DBの行ロック待機はこのtransactionに限り最大2秒とし、取得できなければIssueを更新せずfailedログを確定して500を返す。待機中に先行処理が `success` / `skipped` へ確定していれば200で終了し、なお `failed` の場合だけ `attempt_count` を加算して再試行する。この `lockForUpdate()` を取得したtransactionは、Issue反映とSyncLogの `success` / `skipped` 確定が完了するまでcommitしない
+4. `X-GitHub-Event` が `issues` 以外、または `action` が `opened` / `edited` / `reopened` / `closed` 以外なら `skipped` を記録して202で終了する。`transferred` もv1では同様とする。`error_message` には `unsupported_event` または `unsupported_action` を記録する
+5. 対象actionでは `repository.owner.login` / `repository.name` / `issue.number` / `issue.title` / `issue.html_url` / `issue.state` の存在・型・値を検証し、不正なら422とする。有効なdelivery IDを取得済みの対象Issue payload不正は `failed` SyncLogとして記録する（ヘッダ不正・不正JSONは手順2のとおり記録しない）
+6. `issue.pull_request` が存在する場合はPRとしてIssueを反映せず、`SyncLog.status='skipped'`, `skipped_count=1`, `error_message='pull_request'` を記録して202を返す
+7. payloadの `repository.owner.login` / `repository.name` を小文字化し、`is_active=true` の `product_repositories` を検索。未登録または無効化済みなら `product_id=NULL`, `SyncLog.status='skipped'`, `error_message='repository_not_registered'` のログを残し `202`
+8. `(product_id, issue.number)` でtransaction内にUpsert
+   - 新規 + `issue.state=open`: `is_managed=false`, `status_id=1`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` `issues` テーブル全体の最大値+1。採番からIssue transactionのcommitまでdatabase cache lock `github-import:display-order`（TTL 30秒、最大5秒待機）を保持し、Webhook/再同期間の重複採番を防ぐ。5秒以内に取得できない場合はそのIssueの反映失敗として扱う。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
+   - 新規 + `issue.state=closed`: Issueを作成せず `skipped_count=1`, `SyncLog.status='skipped'`, `error_message='issue_closed_not_imported'` を記録して202を返す
    - 既存: `title` / `github_state` / `github_url` / `github_synced_at` のみ更新。他のツール独自項目は触らない
-6. `product_repositories.last_synced_at` / `last_sync_status` を更新し、`SyncLog` に `trigger='webhook'` と `github_delivery_id` を保存
+9. Issue更新・成功SyncLog確定・リポジトリ状態更新は同一transactionで行う。failed deliveryの再試行では手順3の行ロックもこのtransactionのcommitまで保持する。失敗時はこのtransactionをロールバックし、`last_synced_at` / `last_sync_status` を上書きせず、別transactionで同一deliveryのfailed SyncLogを作成または更新する。再試行は成否にかかわらず1回と数え、主transactionがロールバックされた場合もfailedログ確定transactionで `attempt_count` を必ず加算する。成功時は `error_message` をNULLに戻す
+10. 同時受信の `github_delivery_id` UNIQUE競合では後続transactionをロールバックし、確定済みログを再取得する。`success` / `skipped` なら200、`failed` なら将来のGitHub再送を妨げないよう500を返す
 
 **再同期処理のロジック概要**（`GitHubSyncService::syncProduct`）:
-1. `services.github.token` を読む。未設定なら failed で SyncLog 確定して終了
-2. `GET https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=100&page=N` をページング取得（`Authorization: Bearer {PAT}`、`X-GitHub-Api-Version: 2022-11-28`）
-3. 各要素について `pull_request` キーがあればスキップ（PR除外）
-4. `(product_id, github_issue_number)` でUpsert
-   - 新規: `is_managed=false`, `status_id=1`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` `issues` テーブル全体の最大値+1。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
+1. 対象の `product_repositories.is_active=true` を確認し、database cacheの原子的ロック `github-sync:product:{product_id}`（TTL 3600秒）を非待機で取得する。取得できなければ409を返す
+2. ロック取得後、`status=running`, `finished_at=NULL` のSyncLogを作成する。`services.github.token` を読み、未設定ならfailedで確定して終了
+3. `GET https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=100&page=N` を、空ページまたは `Link` ヘッダに `rel="next"` がなくなるまで取得する。ただし1回の同期は最大100ページ、APIリクエスト受信開始から120秒を上限とし、次ページ取得またはretry前に残り時間を確認する（`Accept: application/vnd.github+json`、`Authorization: Bearer {PAT}`、`X-GitHub-Api-Version: 2022-11-28`）。`state=all` とするのは、未登録open Issueの新規取り込みと、登録済みIssueがclose/reopenされた際の状態更新を同時に行うため
+4. 各要素について `pull_request` キーがあればスキップ（PR除外）
+5. レスポンスbodyがJSON配列であることを検証する。不正JSON・想定外のトップレベル形式は同期全体エラーとして中断する。各要素はIssue payloadとして検証し、不正要素はIssue単位失敗として `failed_count` を加算して後続を続行する。正常要素は `(product_id, github_issue_number)` でIssueごとに短いtransactionを使ってUpsertし、保存失敗も同様に最初のエラーを秘密情報なしで `error_message` に保存して後続を続行する
+   - 新規 + `state=open`: `is_managed=false`, `status_id=1`, `director_id=NULL`, `engineer_id=NULL`, `display_order=` `issues` テーブル全体の最大値+1。Webhookと同じdatabase cache lock `github-import:display-order`（TTL 30秒、最大5秒待機）を採番からIssue transactionのcommitまで保持する。ロックを取得できない場合は `failed_count` を加算して後続Issueを続行する。`title` / `github_url` / `github_issue_number` / `github_state` / `github_synced_at` を保存。`issue_schedules` も日付を全項目NULLで作成
+   - 新規 + `state=closed`: Issueを作成せず `skipped_count` を加算する
    - 既存: `title` / `github_state` / `github_url` / `github_synced_at` のみ更新。他のツール独自項目は触らない
-5. `403`+`X-RateLimit-Remaining: 0` または `429` 検出時は `status='partial'`、`error_message` にリセット時刻を記録して打ち切り
-6. `401` / `404` / 5xx は `status='failed'`、`error_message` にレスポンスbodyを記録して打ち切り
-7. `SyncLog.finished_at` を確定。成功・partial時は `product_repositories.last_synced_at` / `last_sync_status` を更新
+6. HTTPの自動retryは接続例外と一時的な500/502/503/504を対象に、初回リクエストに加えて最大2回（合計最大3回）とする。401/403/404/422/429、その他の4xx、不正JSONはretryしない。`403` / `429` で `X-RateLimit-Remaining: 0` または `Retry-After` がある場合はレート制限として扱い、それ以外の403は権限不足として扱う
+7. レート制限、認証・権限・Not Found・Validationエラー、retry後の5xx・タイムアウト、不正JSON、100ページまたは120秒の実行上限到達、Issue単位の失敗が発生した場合、`created_count + updated_count >= 1` なら `partial`、0件なら `failed` とする。レート制限時は `Retry-After` を優先し、なければ `X-RateLimit-Reset` の時刻を `error_message` に記録する。実行上限到達時は `sync_limit_exceeded` と到達したページ数・経過秒数を秘密情報なしで記録する
+8. 成否にかかわらず `SyncLog.finished_at` と結果を確定する。`product_repositories.last_synced_at` / `last_sync_status` は `success` または `partial` の場合のみ同じ終了時刻・結果で更新し、`failed` の場合は直近の成功/一部成功の値を保持する
+9. 排他ロックは所有者が `finally` で必ず解放する。プロセス強制終了で解放されない場合も3600秒で失効し、以後の再同期を受け付ける
 
 ### 管理表・ダッシュボード統合エンドポイント
 
