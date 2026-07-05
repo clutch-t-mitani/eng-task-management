@@ -15,6 +15,7 @@
         {{ issue.title }}
       </a>
       <span v-else class="issue-title issue-title-static">{{ issue.title }}</span>
+      <span v-if="issue.github_state" :class="`gh-state gh-state-${issue.github_state}`">{{ issue.github_state }}</span>
     </div>
     <div class="col-product">
       <span class="product-name">{{ issue.product_name ?? '—' }}</span>
@@ -116,7 +117,10 @@ function updateEngineer(value) {
   cursor: grab;
   line-height: 1;
 }
-.col-title { padding: 6px 8px; overflow: hidden; display: flex; align-items: center; gap: 8px; }
+.col-title { padding: 6px 8px; overflow: hidden; display: flex; align-items: center; gap: 6px; }
+.gh-state { border-radius: 10px; font-size: 10px; font-weight: 600; padding: 1px 5px; white-space: nowrap; flex-shrink: 0; }
+.gh-state-open { background: #c6f6d5; color: #276749; }
+.gh-state-closed { background: #fed7d7; color: #9b2c2c; }
 .issue-title {
   color: #2b6cb0;
   display: block;
