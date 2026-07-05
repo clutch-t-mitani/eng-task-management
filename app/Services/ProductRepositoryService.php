@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Issue;
 use App\Models\Product;
 use App\Models\ProductRepository;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -49,12 +50,19 @@ class ProductRepositoryService
             }
         }
 
-        return DB::transaction(function () use ($product, $owner, $repo): ProductRepository {
-            return ProductRepository::query()->updateOrCreate(
-                ['product_id' => $product->id],
-                ['owner' => $owner, 'repo' => $repo, 'is_active' => true],
-            );
-        });
+        try {
+            return DB::transaction(function () use ($product, $owner, $repo): ProductRepository {
+                return ProductRepository::query()->updateOrCreate(
+                    ['product_id' => $product->id],
+                    ['owner' => $owner, 'repo' => $repo, 'is_active' => true],
+                );
+            });
+        } catch (UniqueConstraintViolationException) {
+            // 事前チェック後に他プロダクトが同一owner/repoを登録した競合
+            throw ValidationException::withMessages([
+                'repo' => ['このリポジトリは他のプロダクトに登録されています。'],
+            ]);
+        }
     }
 
     public function deactivate(Product $product): void

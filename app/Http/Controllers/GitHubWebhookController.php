@@ -9,6 +9,7 @@ use App\Models\ProductRepository;
 use App\Models\SyncLog;
 use App\Services\GitHubIssueImportService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -68,7 +69,9 @@ class GitHubWebhookController extends Controller
     private function retryFailedDelivery(SyncLog $existingLog, string $deliveryId, string $event, array $payload): JsonResponse
     {
         $lockWait = (int) config('services.github.webhook_lock_ttl', 2);
-        $lock = Cache::lock('github-webhook:delivery:'.$deliveryId, $lockWait);
+        // TTLは待機時間ではなく処理全体（Issue反映＋SyncLog確定）を守る長さにする
+        $lockTtl = (int) config('services.github.webhook_lock_hold_ttl', 30);
+        $lock = Cache::lock('github-webhook:delivery:'.$deliveryId, $lockTtl);
 
         try {
             $lock->block($lockWait);
@@ -82,6 +85,9 @@ class GitHubWebhookController extends Controller
             $syncLog = null;
             DB::transaction(function () use ($existingLog, &$syncLog): void {
                 $locked = SyncLog::query()->lockForUpdate()->find($existingLog->id);
+                if ($locked === null) {
+                    return;
+                }
                 if (! in_array($locked->status, [SyncStatus::Failed], true)) {
                     $syncLog = $locked;
 
@@ -91,6 +97,10 @@ class GitHubWebhookController extends Controller
                 $locked->update(['started_at' => now(), 'finished_at' => null]);
                 $syncLog = $locked->refresh();
             });
+
+            if ($syncLog === null) {
+                return response()->json(['message' => 'Processing conflict, please retry.'], 500);
+            }
 
             if ($syncLog->status !== SyncStatus::Failed) {
                 return response()->json(SyncLogResource::make($syncLog->refresh())->resolve());
@@ -104,13 +114,26 @@ class GitHubWebhookController extends Controller
 
     private function processNewDelivery(string $deliveryId, string $event, array $payload): JsonResponse
     {
-        $syncLog = SyncLog::query()->create([
-            'trigger' => SyncTrigger::Webhook,
-            'github_delivery_id' => $deliveryId,
-            'attempt_count' => 1,
-            'status' => SyncStatus::Running,
-            'started_at' => now(),
-        ]);
+        try {
+            $syncLog = SyncLog::query()->create([
+                'trigger' => SyncTrigger::Webhook,
+                'github_delivery_id' => $deliveryId,
+                'attempt_count' => 1,
+                'status' => SyncStatus::Running,
+                'started_at' => now(),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // 同一deliveryの同時受信で先行処理が行を作成済み → 確定済みstatusで応答
+            $existing = SyncLog::query()
+                ->where('github_delivery_id', $deliveryId)
+                ->first();
+
+            if ($existing !== null && in_array($existing->status, [SyncStatus::Success, SyncStatus::Skipped], true)) {
+                return response()->json(SyncLogResource::make($existing)->resolve());
+            }
+
+            return response()->json(['message' => 'Processing conflict, please retry.'], 500);
+        }
 
         return $this->handleDelivery($syncLog, $event, $payload);
     }
@@ -196,6 +219,11 @@ class GitHubWebhookController extends Controller
                 return response()->json(SyncLogResource::make($syncLog)->resolve(), 202);
             }
 
+            if ($syncLog->status === SyncStatus::Failed) {
+                // 500を返してGitHubの再送に委ねる
+                return response()->json(['message' => $syncLog->error_message ?? 'processing_failed'], 500);
+            }
+
             return response()->json(SyncLogResource::make($syncLog)->resolve());
         } catch (Throwable) {
             // Step 11: 失敗確定（別transaction）
@@ -244,8 +272,8 @@ class GitHubWebhookController extends Controller
     private function confirmFailedLog(SyncLog $syncLog, ?int $productId = null): void
     {
         try {
+            // attempt_countは行作成時(=1)または再試行transaction内で加算済みのため、ここでは加算しない
             DB::transaction(function () use ($syncLog, $productId): void {
-                $syncLog->increment('attempt_count');
                 $syncLog->update([
                     'product_id' => $productId ?? $syncLog->product_id,
                     'status' => SyncStatus::Failed,

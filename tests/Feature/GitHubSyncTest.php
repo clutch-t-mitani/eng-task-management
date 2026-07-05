@@ -245,6 +245,20 @@ class GitHubSyncTest extends TestCase
         $this->assertDatabaseCount('issues', 1);
     }
 
+    public function test_sync_returns_success_when_repository_has_no_issues(): void
+    {
+        Http::fake([
+            'api.github.com/*' => Http::response([], 200),
+        ]);
+
+        $this->actingAs($this->actor)
+            ->postJson("/api/v1/products/{$this->product->id}/sync")
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('created_count', 0)
+            ->assertJsonPath('updated_count', 0);
+    }
+
     public function test_sync_fails_when_github_returns_401(): void
     {
         Http::fake([

@@ -334,6 +334,48 @@ class GitHubWebhookTest extends TestCase
         $this->assertDatabaseCount('issues', 1);
     }
 
+    public function test_returns_500_with_failed_log_when_import_fails(): void
+    {
+        // display_orderロックを保持してIssue作成を失敗させる
+        config(['services.github.display_order_lock_wait' => 0]);
+        Cache::lock('github-import:display-order', 30)->get();
+
+        $this->webhookPost($this->issuePayload('opened'))
+            ->assertStatus(500);
+
+        $this->assertDatabaseCount('issues', 0);
+        $this->assertDatabaseHas('sync_logs', [
+            'github_delivery_id' => self::DELIVERY_ID,
+            'status' => 'failed',
+            'attempt_count' => 1,
+            'error_message' => 'display_order_lock_timeout',
+        ]);
+    }
+
+    public function test_retry_failure_increments_attempt_count_once(): void
+    {
+        $failedLog = SyncLog::query()->create([
+            'github_delivery_id' => self::DELIVERY_ID,
+            'trigger' => 'webhook',
+            'status' => SyncStatus::Failed,
+            'attempt_count' => 1,
+            'error_message' => 'some_error',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now()->subSecond(),
+        ]);
+
+        // 再試行も失敗させる（display_orderロック保持）
+        config(['services.github.display_order_lock_wait' => 0]);
+        Cache::lock('github-import:display-order', 30)->get();
+
+        $this->webhookPost($this->issuePayload('opened'))
+            ->assertStatus(500);
+
+        $failedLog->refresh();
+        $this->assertEquals(2, $failedLog->attempt_count);
+        $this->assertEquals(SyncStatus::Failed, $failedLog->status);
+    }
+
     // --- ルート確認 ---
 
     public function test_webhook_route_does_not_require_authentication(): void

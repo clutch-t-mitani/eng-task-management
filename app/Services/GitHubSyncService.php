@@ -129,12 +129,11 @@ class GitHubSyncService
             $firstError = $errorMessage ?? $total->firstError;
             $hasError = $errorMessage !== null || $total->failed > 0 || $limitReached;
 
-            if ($hasChanges && $hasError) {
-                $status = SyncStatus::Partial;
-            } elseif ($hasChanges) {
-                $status = SyncStatus::Success;
+            // エラーなしなら0件（空リポジトリ等）でもSuccess
+            if ($hasError) {
+                $status = $hasChanges ? SyncStatus::Partial : SyncStatus::Failed;
             } else {
-                $status = SyncStatus::Failed;
+                $status = SyncStatus::Success;
             }
 
             DB::transaction(function () use ($syncLog, $repo, $total, $status, $firstError): void {

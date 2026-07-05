@@ -60,6 +60,10 @@ async function resync() {
     try {
         const result = await syncStore.resyncNow(productId.value);
         if (!result) return;
+        if (result.status === 'failed') {
+            emit('error', result.error_message ?? '同期に失敗しました。');
+            return;
+        }
         emit(
             'success',
             `作成 ${result.created_count} / 更新 ${result.updated_count} / スキップ ${result.skipped_count} / 失敗 ${result.failed_count}`,

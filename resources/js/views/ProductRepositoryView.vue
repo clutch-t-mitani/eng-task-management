@@ -249,7 +249,7 @@ function statusLabel(status) {
 }
 
 function triggerLabel(trigger) {
-    return { webhook: 'Webhook', manual: '手動同期' }[trigger] ?? trigger;
+    return { webhook: 'Webhook', manual_resync: '手動再同期' }[trigger] ?? trigger;
 }
 </script>
 
